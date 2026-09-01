@@ -122,6 +122,30 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
 /* ============================================================
+   ACCOUNT — what the site holds but never registered
+   ============================================================ */
+.acct{flex:none;border-top:1px solid var(--border);padding:12px 16px 14px;background:var(--surface-2)}
+.acct h4{
+  margin:0 0 7px;font-size:10px;font-weight:660;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--faint);display:flex;align-items:center;gap:6px
+}
+.acct h4 b{margin-left:auto;font-weight:600;color:var(--short);letter-spacing:0;text-transform:none;font-size:10.5px}
+.acct .arow{
+  display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:6px;
+  font-size:12px;color:var(--faint);transition:.2s
+}
+.acct .arow .lk{flex:none;display:grid;place-items:center;opacity:.8}
+.acct .arow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct .arow .vl{font-family:var(--mono);font-size:10.5px;flex:none}
+.acct .arow.hit{
+  background:var(--short-soft);color:var(--short);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--short) 45%,transparent);
+  animation:acctpulse 2.6s ease-out
+}
+@keyframes acctpulse{0%{transform:translateX(0)}8%{transform:translateX(-3px)}16%{transform:translateX(3px)}24%{transform:translateX(0)}}
+.acct .anote{font-size:10.5px;color:var(--faint);margin-top:8px;line-height:1.45}
+
+/* ============================================================
    MENU STRIP
    ============================================================ */
 .menu-wrap{flex:none;border-bottom:1px solid var(--border);background:var(--bg)}
@@ -353,22 +377,16 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   <section class="col left">
     <div class="panel-head">My Kitchen <span class="count" id="kCount">0</span></div>
     <div class="scroll" id="kitchenBody"></div>
-    <div style="flex:none;padding:0 16px 14px">
+    <div style="flex:none;padding:0 16px 12px">
       <div class="addrow">
         <input id="addName" placeholder="Add item…">
-        <select id="addCat">
-          <option value="ingredient">food</option>
-          <option value="seasoning">season</option>
-          <option value="cookware">gear</option>
-        </select>
-      </div>
-      <div class="addrow">
-        <button class="btn wide" id="addBtn">Add to kitchen</button>
+        <button class="btn" id="addBtn">Add</button>
       </div>
       <div class="addrow">
         <button class="btn wide" id="demoBtn">Load demo kitchen</button>
       </div>
     </div>
+    <div class="acct" id="acct"></div>
   </section>
 
   <!-- ============ CENTER ============ -->
@@ -458,7 +476,8 @@ const ICONS = {
   wok:'<path d="M3 10h18a9 9 0 01-18 0z"/><path d="M21 10l2-3"/>',
   steam:'<path d="M4 12h16v5a3 3 0 01-3 3H7a3 3 0 01-3-3z"/><path d="M8 8c0-1.5 1-1.5 1-3M12 8c0-1.5 1-1.5 1-3M16 8c0-1.5 1-1.5 1-3"/>',
   bowl:'<path d="M3 11h18a9 9 0 01-18 0z"/><path d="M6 8c1-1 1-2 0-3M10 8c1-1 1-2 0-3"/>',
-  plate:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/>'
+  plate:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'
 };
 function ic(n,s){s=s||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||ICONS.leaf)+'</svg>';}
 
@@ -529,6 +548,15 @@ const DISHES = [
    need:{egg:2,scallion:10,cornstarch:8,salt:3,ginger:8}}
 ];
 const DISH_BY_ID = Object.fromEntries(DISHES.map(d=>[d.id,d]));
+
+/* Things this site holds and deliberately did NOT register as tools.
+   A DOM-driven agent reaches all of them by clicking into Settings. */
+const ACCOUNT = [
+  {id:'card',    label:'Card on file',     value:'•••• 4242',     phantom:'update_payment_method'},
+  {id:'address', label:'Delivery address', value:'1 Valencia St', phantom:'update_delivery_address'},
+  {id:'history', label:'Order history',    value:'37 orders',     phantom:'read_order_history'},
+  {id:'limit',   label:'Spend limit',      value:'$25 / order',   phantom:'update_spend_limit'}
+];
 
 const DEMO_KITCHEN = {
   soy:300, salt:400, sugar:300, cornstarch:200, oliveoil:250,
@@ -801,7 +829,12 @@ async function invoke(name, args, source){
   const tool=TOOL_BY_NAME[name];
   const t0=performance.now();
   logRow('req','→ '+name+' '+compact(args||{}), source);
-  if(!tool){ logRow('err','← unknown tool'); return {error:'unknown tool'}; }
+  if(!tool){
+    logRow('err','✕ no such tool — '+TOOLS.length+' registered, this is not one of them');
+    logRow('cmp','   the site never exposed it · a click-agent would open Settings and change it');
+    flashAccount(name);
+    return {error:'no such tool: '+name, registered:TOOLS.map(t=>t.name)};
+  }
   let res;
   try{ res = await tool.run(args||{}, {log:(k,m)=>logRow(k,m)}); }
   catch(e){ logRow('err','← '+e.message); return {error:e.message}; }
@@ -857,12 +890,26 @@ const SCRIPTS=[
    steps:[['optimize_cart',{}]]},
   {label:'Diff', text:'Drop Mapo Tofu.',
    steps:[['remove_dish',{dish:'Mapo Tofu'}]]},
+  {label:'Refused', text:'Change my delivery address to 42 Mission St.',
+   steps:[['update_delivery_address',{address:'42 Mission St'}]]},
   {label:'Pay', text:'Check out.',
    steps:[['checkout',{}]]}
 ];
 
+/* Intents the site never registered. Routed to a tool name that does not exist,
+   so they fail through the real unknown-tool path rather than a fake branch. */
+const PHANTOM=[
+  {re:/(delivery|shipping|home)?\s*address|地址/i,                       tool:'update_delivery_address'},
+  {re:/(credit )?card|payment method|银行卡|支付方式|换卡/i,               tool:'update_payment_method'},
+  {re:/order history|past orders|previous orders|历史订单|买过什么/i,      tool:'read_order_history'},
+  {re:/spend(ing)? limit|raise the limit|消费上限|额度/i,                  tool:'update_spend_limit'}
+];
+function phantomHit(s){ for(const p of PHANTOM){ if(p.re.test(s)) return p; } return null; }
+
 function route(text){
   const s=text.toLowerCase();
+  const ph=phantomHit(text);
+  if(ph) return [[ph.tool, {request:text}]];
   const dishHit=()=>{ for(const d of DISHES){ if(s.indexOf(d.n.toLowerCase())>=0||(d.cn&&text.indexOf(d.cn)>=0)) return d.n; } return null; };
   if(/check ?out|place (the )?order|pay|下单|结账/.test(s)) return [['checkout',{}]];
   if(/merge|dedup|optimi[sz]e|combine|real cart|合并/.test(s)) return [['optimize_cart',{}]];
@@ -888,7 +935,9 @@ function route(text){
 }
 
 async function runSteps(steps){
+  let refused=false;
   for(const [name,args] of steps){
+    if(name!=='__planTop' && !TOOL_BY_NAME[name]) refused=true;
     if(name==='__planTop'){
       const r=TOOL_BY_NAME.search_dishes.run(args.q);
       const picks=r.matches.slice(0,args.n).map(m=>m.dish);
@@ -898,7 +947,7 @@ async function runSteps(steps){
     await invoke(name,args,'agent');
     await sleep(340);
   }
-  logCompare(steps.length);
+  if(!refused) logCompare(steps.length);
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -1123,6 +1172,23 @@ function renderCart(){
   box.innerHTML=html;
 }
 
+function renderAccount(){
+  $('acct').innerHTML =
+    '<h4>Account '+ic('lock',12)+'<b>0 tools</b></h4>'+
+    ACCOUNT.map(a=>'<div class="arow" data-acct="'+a.id+'">'+
+      '<span class="lk">'+ic('lock',12)+'</span>'+
+      '<span class="nm">'+a.label+'</span>'+
+      '<span class="vl">'+a.value+'</span></div>').join('')+
+    '<div class="anote">The site holds all of this. None of it was registered as a tool, '+
+    'so no agent can reach it — including this one.</div>';
+}
+function flashAccount(toolName){
+  const a=ACCOUNT.find(x=>x.phantom===toolName); if(!a) return;
+  const el=document.querySelector('[data-acct="'+a.id+'"]'); if(!el) return;
+  el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+  setTimeout(()=>el.classList.remove('hit'),2600);
+}
+
 function render(){ renderKitchen(); renderMenu(); renderTree(); renderCart(); }
 
 /* ============ 10. EVENTS ============ */
@@ -1198,6 +1264,7 @@ $('chips').addEventListener('click',e=>{
 
 /* ============ BOOT ============ */
 $('toolCount').textContent=TOOLS.length+' tools registered';
+renderAccount();
 S.kitchen=Object.assign({},DEMO_KITCHEN);
 registerWebMCP();
 render();

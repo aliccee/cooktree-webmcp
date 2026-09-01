@@ -58,7 +58,27 @@ Dedupe across dishes, subtract what's already in the kitchen, round up to **real
 sizes** (garlic is sold as a head, not by the gram). None of these intermediate states are
 rendered anywhere. There is nothing to scrape.
 
-### 3. Pay without handing over the card
+### 3. Refuse what was never handed over
+
+Ask the agent to change the delivery address on the account:
+
+```
+→ update_delivery_address { "address": "42 Mission St" }
+✕ no such tool — 8 registered, this is not one of them
+   the site never exposed it · a click-agent would open Settings and change it
+```
+
+![Refused](docs/06-refused.png)
+
+The account panel, bottom left, shows what this site *does* hold: the card on file, the
+delivery address, 37 past orders, the spend limit. **None of it was registered as a tool.**
+A DOM-driven agent in this same tab reaches every one of them by clicking into Settings —
+it has the whole session. This one has eight functions and nothing else.
+
+This is the only beat that proves a *structural* difference. The other two only prove
+convenience.
+
+### 4. Pay without handing over the card
 
 `checkout()` is declared as requiring human confirmation above a spend limit.
 
@@ -96,6 +116,10 @@ Eight tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so d
 | `optimize_cart` | Dedupe → subtract kitchen → round to pack sizes |
 | `checkout` | Human-gated. Card never enters the tool result |
 
+Deliberately **not** registered: `update_delivery_address`, `update_payment_method`,
+`read_order_history`, `update_spend_limit`. Asking for any of them fails through the real
+unknown-tool path — there is no fake refusal branch.
+
 Clicking an ingredient in the tree fires `explain_shortage`. Clicking a dish card fires
 `plan_week`. It all shows up in the console as tool calls, because it's all the same layer.
 
@@ -130,7 +154,8 @@ Five preset prompts live in the console sidebar. In order:
 2. *"Why is Sichuan peppercorn on my list?"* — one dish lights up, everything else dims, substitutes appear
 3. *"Merge duplicates and show me the real cart."* — 21 → 16 → 8
 4. *"Drop Mapo Tofu."* — the diff, in one call
-5. *"Check out."* — the confirmation sheet
+5. *"Change my delivery address to 42 Mission St."* — **refused; the account row lights up**
+6. *"Check out."* — the confirmation sheet
 
 ## Screenshots
 
