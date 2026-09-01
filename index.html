@@ -4,38 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CookTree — agent-native meal planning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* ============================================================
-   TOKENS
+   TOKENS — guide-style: warm paper, hairlines, square corners,
+   one red used only where it matters.
    ============================================================ */
 :root{
-  --bg:#FBFAF7; --surface:#FFFFFF; --surface-2:#F5F3EE; --border:#E7E2D8;
-  --text:#191815; --muted:#7A756A; --faint:#A9A399;
-  --brand:#1F6F4A; --brand-soft:#E6F1EA;
-  --have:#2E7D5B; --have-soft:#E7F2EC;
-  --short:#B4541E; --short-soft:#FBEEE4;
-  --warn:#8A6D1F;
-  --console-bg:#171614; --console-fg:#E9E5DC; --console-dim:#8B857A; --console-line:#2A2824;
-  --shadow:0 1px 2px rgba(25,24,21,.05), 0 8px 24px -12px rgba(25,24,21,.18);
-  --radius:12px;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --bg:#FAF8F5; --surface:#FFFFFF; --surface-2:#F3F1EC; --border:#E4E0DA;
+  --border-2:#CBC6BD;
+  --text:#1A1A18; --muted:#6E6B66; --faint:#9C9891;
+  --brand:#1A1A18; --brand-soft:#F3F1EC;
+  --red:#C1002B;
+  --have:#94908A; --have-soft:#F3F1EC;
+  --short:#C1002B; --short-soft:#FBF0F2;
+  --warn:#8A6A2C;
+  --console-bg:#1A1A18; --console-fg:#EDEAE4; --console-dim:#8B8781; --console-line:#2E2D2A;
+  --shadow:none;
+  --radius:0px;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Mulish",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#121110; --surface:#1B1A18; --surface-2:#232120; --border:#302D29;
-  --text:#F3F0EA; --muted:#9A948A; --faint:#6E685E;
-  --brand:#4FBE8B; --brand-soft:#163024;
-  --have:#4FBE8B; --have-soft:#152B21;
-  --short:#E08A54; --short-soft:#33210F;
-  --warn:#D8B85C;
-  --console-bg:#0D0C0B; --console-line:#242220;
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --bg:#141311; --surface:#1C1B18; --surface-2:#232220; --border:#302E2A;
+  --border-2:#413E39;
+  --text:#F2EFE9; --muted:#9C978F; --faint:#6F6B65;
+  --brand:#F2EFE9; --brand-soft:#232220;
+  --red:#E8475F;
+  --have:#7C7871; --have-soft:#232220;
+  --short:#E8475F; --short-soft:#2C1418;
+  --warn:#C9A85E;
+  --console-bg:#0E0E0C; --console-line:#262522;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0; background:var(--bg); color:var(--text);
-  font:14px/1.5 var(--sans); -webkit-font-smoothing:antialiased;
+  font:14px/1.55 var(--sans);letter-spacing:.005em; -webkit-font-smoothing:antialiased;
   display:flex; flex-direction:column; overflow:hidden;
 }
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
@@ -48,27 +55,27 @@ input,select{font:inherit;color:inherit}
    ============================================================ */
 header{
   flex:none; display:flex; align-items:center; gap:14px;
-  padding:0 18px; height:56px; border-bottom:1px solid var(--border);
+  padding:0 22px; height:62px; border-bottom:1px solid var(--border-2);
   background:var(--surface);
 }
-.logo{display:flex;align-items:center;gap:8px;font-weight:640;font-size:16px;letter-spacing:-.01em}
-.logo svg{color:var(--brand)}
-.logo em{font-style:normal;color:var(--brand)}
-.tagline{font-size:12px;color:var(--faint);border-left:1px solid var(--border);padding-left:14px;margin-left:2px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;letter-spacing:.01em;text-transform:uppercase}
+.logo svg{color:var(--red)}
+.logo em{font-style:normal;color:var(--red)}
+.tagline{font-size:11px;color:var(--faint);border-left:1px solid var(--border);padding-left:14px;margin-left:2px;letter-spacing:.02em}
 .spacer{flex:1}
 .pill{
   display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;
-  border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted);
-  background:var(--surface-2); white-space:nowrap;
+  border:1px solid var(--border);border-radius:0;font-size:11px;color:var(--muted);
+  background:transparent;white-space:nowrap;letter-spacing:.04em;text-transform:uppercase;
 }
 .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
 .pill.live{color:var(--have);border-color:color-mix(in srgb,var(--have) 34%,transparent);background:var(--have-soft)}
 .pill.live .dot{background:var(--have);box-shadow:0 0 0 0 color-mix(in srgb,var(--have) 60%,transparent);animation:ping 2s infinite}
 @keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--have) 55%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
-.seg{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-2)}
-.seg button{padding:5px 11px;font-size:12px;color:var(--muted)}
-.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);font-weight:560;box-shadow:var(--shadow)}
-.iconbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+.seg{display:flex;border:1px solid var(--border);border-radius:0;overflow:hidden;background:transparent}
+.seg button{padding:5px 13px;font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.seg button[aria-pressed="true"]{background:var(--text);color:var(--surface);font-weight:700}
+.iconbtn{width:30px;height:30px;border-radius:0;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
 .iconbtn:hover{background:var(--surface-2);border-color:var(--border);color:var(--text)}
 
 /* ============================================================
@@ -79,67 +86,72 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .col.left{border-right:1px solid var(--border);background:var(--surface)}
 .col.right{border-left:1px solid var(--border);background:var(--surface)}
 .panel-head{
-  flex:none;display:flex;align-items:center;gap:8px;padding:14px 16px 10px;
-  font-size:11px;font-weight:660;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+  flex:none;display:flex;align-items:center;gap:8px;padding:20px 18px 12px;
+  font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text);
+  position:relative;
 }
+.panel-head::before{content:"";position:absolute;top:10px;left:18px;width:26px;height:2px;background:var(--red)}
+.panel-head{padding-top:24px}
 .panel-head .count{
-  margin-left:auto;font-size:11px;letter-spacing:0;text-transform:none;font-weight:600;
-  background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted)
+  margin-left:auto;font-size:10.5px;letter-spacing:.04em;text-transform:none;font-weight:500;
+  font-family:var(--mono);border:none;padding:0;color:var(--faint)
 }
-.scroll{flex:1;overflow-y:auto;padding:0 16px 16px}
+.scroll{flex:1;overflow-y:auto;padding:0 18px 18px}
 
 /* ============================================================
    KITCHEN
    ============================================================ */
 .kgroup{margin-bottom:14px}
 .kgroup h4{
-  margin:0 0 6px;font-size:11px;font-weight:640;letter-spacing:.05em;text-transform:uppercase;
-  color:var(--muted);display:flex;align-items:center;gap:6px
+  margin:0 0 4px;font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--faint);display:flex;align-items:center;gap:6px;font-family:var(--mono);
+  border-bottom:1px solid var(--border);padding-bottom:6px
 }
 .kgroup h4 span{color:var(--faint);font-weight:500}
 .kitem{
-  display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;font-size:13px;
+  display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px;
 }
-.kitem:hover{background:var(--surface-2)}
+.kitem:hover .nm{color:var(--red)}
 .kitem .ic{color:var(--muted);flex:none;display:grid;place-items:center}
 .kitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kitem .qt{font-family:var(--mono);font-size:11px;color:var(--faint)}
 .empty{font-size:12px;color:var(--faint);padding:4px 8px;font-style:italic}
 .addrow{display:flex;gap:6px;margin-top:8px}
 .addrow input,.addrow select{
-  flex:1;min-width:0;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:8px;
-  background:var(--bg);font-size:12px
+  flex:1;min-width:0;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:0;
+  background:var(--surface);font-size:12.5px
 }
 .addrow select{flex:none;width:82px}
 .btn{
-  height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);
-  font-size:12px;font-weight:560;display:inline-flex;align-items:center;gap:6px;justify-content:center
+  height:32px;padding:0 14px;border-radius:0;border:1px solid var(--border-2);background:transparent;
+  font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:6px;justify-content:center
 }
-.btn:hover{background:var(--border)}
-.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-.btn.primary:hover{filter:brightness(1.08)}
-.btn.wide{width:100%;height:34px}
+.btn:hover{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn.primary{background:var(--text);border-color:var(--text);color:var(--bg)}
+.btn.primary:hover{background:var(--red);border-color:var(--red);color:#fff}
+.btn.wide{width:100%;height:38px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
 /* ============================================================
    ACCOUNT — what the site holds but never registered
    ============================================================ */
-.acct{flex:none;border-top:1px solid var(--border);padding:12px 16px 14px;background:var(--surface-2)}
+.acct{flex:none;border-top:1px solid var(--border-2);padding:16px 18px 18px;background:var(--surface-2)}
 .acct h4{
-  margin:0 0 7px;font-size:10px;font-weight:660;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--faint);display:flex;align-items:center;gap:6px
+  margin:0 0 9px;font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--text);display:flex;align-items:center;gap:6px;font-family:var(--mono)
 }
-.acct h4 b{margin-left:auto;font-weight:600;color:var(--short);letter-spacing:0;text-transform:none;font-size:10.5px}
+.acct h4 b{margin-left:auto;font-weight:500;color:var(--red);letter-spacing:.06em;font-size:9.5px}
 .acct .arow{
-  display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:6px;
+  display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px dashed var(--border);
   font-size:12px;color:var(--faint);transition:.2s
 }
 .acct .arow .lk{flex:none;display:grid;place-items:center;opacity:.8}
 .acct .arow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .acct .arow .vl{font-family:var(--mono);font-size:10.5px;flex:none}
 .acct .arow.hit{
-  background:var(--short-soft);color:var(--short);
-  box-shadow:0 0 0 1px color-mix(in srgb,var(--short) 45%,transparent);
+  color:var(--red);border-bottom-color:var(--red);
+  box-shadow:inset 3px 0 0 var(--red);padding-left:9px;
   animation:acctpulse 2.6s ease-out
 }
 @keyframes acctpulse{0%{transform:translateX(0)}8%{transform:translateX(-3px)}16%{transform:translateX(3px)}24%{transform:translateX(0)}}
@@ -149,114 +161,112 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
    MENU STRIP
    ============================================================ */
 .menu-wrap{flex:none;border-bottom:1px solid var(--border);background:var(--bg)}
-.menu{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding:12px 18px 14px;scrollbar-width:thin}
+.menu{display:flex;align-items:stretch;gap:10px;overflow-x:auto;padding:14px 22px 18px;scrollbar-width:thin}
 .dish{
-  flex:none;width:150px;text-align:left;padding:9px 10px;border:1px solid var(--border);
-  border-radius:11px;background:var(--surface);transition:.14s;position:relative;overflow:hidden
+  flex:none;width:172px;text-align:left;padding:14px 15px 13px;border:1px solid var(--border);
+  border-radius:0;background:var(--surface);transition:.14s;position:relative;overflow:hidden;
+  display:flex;flex-direction:column
 }
-.dish:hover{border-color:var(--faint);transform:translateY(-1px);box-shadow:var(--shadow)}
-.dish[data-on="1"]{border-color:var(--brand);background:var(--brand-soft)}
-.dish .bar{position:absolute;left:0;top:0;bottom:0;width:3px}
-.dish .top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.dish .glyph{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;flex:none;color:#fff}
-.dish .nm{display:block;font-size:12.5px;font-weight:600;line-height:1.25;letter-spacing:-.01em}
-.dish .cn{display:block;font-size:11px;color:var(--faint);margin-top:1px}
+.dish:hover{border-color:var(--text)}
+.dish[data-on="1"]{border-color:var(--text);background:var(--surface)}
+.dish[data-on="1"]::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--red)}
+.dish .bar{display:none}
+.dish .cui{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.dish .top{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.dish .glyph{width:22px;height:22px;border-radius:0;display:grid;place-items:center;flex:none;color:var(--text);opacity:.62}
+.dish .nm{display:block;font-size:13.5px;font-weight:700;line-height:1.22;letter-spacing:-.005em}
+.dish .cn{display:block;font-size:11px;color:var(--muted);margin-top:2px;font-weight:400}
 .dish .top>span:last-child{min-width:0;flex:1}
-.dish .meta{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);font-family:var(--mono)}
-.dish .miss{color:var(--short)}
-.dish .ok{color:var(--have)}
+.dish .meta{display:flex;align-items:center;gap:7px;margin-top:auto;font-size:9.5px;color:var(--faint);
+  font-family:var(--mono);letter-spacing:.09em;border-top:1px solid var(--border);padding-top:9px}
+.dish .miss{color:var(--red);font-weight:500}
+.dish .ok{color:var(--faint)}
 
 /* ============================================================
    TREE
    ============================================================ */
 .tree-wrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .tree-bar{
-  flex:none;display:flex;align-items:center;gap:10px;padding:11px 18px 9px;
-  font-size:11px;font-weight:660;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)
+  flex:none;display:flex;align-items:center;gap:10px;padding:20px 22px 12px;position:relative;
+  font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text)
 }
-.legend{margin-left:auto;display:flex;gap:12px;text-transform:none;letter-spacing:0;font-weight:500;font-size:11px}
-.legend i{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.tree-scroll{flex:1;overflow:auto;padding:4px 18px 24px}
+.legend{margin-left:auto;display:flex;gap:16px;text-transform:uppercase;letter-spacing:.11em;font-weight:600;font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+.legend i{display:inline-block;width:14px;height:2px;margin-right:7px;vertical-align:3px}
+.tree-bar::before{content:"";position:absolute;top:10px;left:22px;width:26px;height:2px;background:var(--red)}
+.tree-scroll{flex:1;overflow:auto;padding:4px 22px 28px}
 .tree{position:relative;display:grid;grid-template-columns:minmax(150px,222px) minmax(90px,300px) minmax(170px,246px);gap:0;align-items:start;max-width:800px}
 .tree .edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .tcol{display:flex;flex-direction:column;gap:7px;position:relative;z-index:1}
 .tcol.mid{pointer-events:none}
-.tlabel{font-size:10px;font-weight:660;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:2px 0 2px}
-.tlabel.short{color:var(--short)}
+.tlabel{font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--faint);padding:2px 0 4px;font-family:var(--mono)}
+.tlabel.short{color:var(--red)}
 .tnode{
-  display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);
-  border-radius:9px;background:var(--surface);font-size:12.5px;transition:.14s;text-align:left;width:100%
+  display:flex;flex-direction:row;align-items:center;gap:9px;padding:9px 12px;border:1px solid var(--border);
+  border-radius:0;background:var(--surface);font-size:12.5px;transition:.14s;text-align:left;width:100%
 }
-.tnode.dish{padding:9px 10px}
-.tnode .glyph{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;flex:none;color:#fff}
-.tnode .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:520}
+.tnode.dish{padding:11px 12px}
+.tnode .glyph{width:18px;height:18px;border-radius:0;display:grid;place-items:center;flex:none;color:var(--text);opacity:.6}
+.tnode .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .tnode .qt{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex:none}
-.tnode.item.have{border-color:color-mix(in srgb,var(--have) 26%,var(--border));background:var(--have-soft)}
-.tnode.item.have .ic{color:var(--have)}
-.tnode.item.short{border-color:color-mix(in srgb,var(--short) 40%,var(--border));background:var(--short-soft)}
-.tnode.item.short .ic{color:var(--short)}
-.tnode.item.short .qt{color:var(--short)}
+.tnode.item.have{border-color:var(--border);background:transparent;color:var(--muted)}
+.tnode.item.have .ic{color:var(--faint);opacity:.7}
+.tnode.item.short{border-color:var(--red);background:var(--surface);box-shadow:inset 2px 0 0 var(--red)}
+.tnode.item.short .ic{color:var(--red)}
+.tnode.item.short .qt{color:var(--red);font-weight:500}
 .tnode.dim{opacity:.26}
-.tnode.hi{box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 45%,transparent);border-color:var(--brand)}
+.tnode.hi{box-shadow:inset 3px 0 0 var(--red);border-color:var(--text)}
 .tnode:hover{transform:translateX(1px)}
 .tnode .ic{flex:none;display:grid;place-items:center;color:var(--muted)}
-.tnode.enter{animation:pop .34s cubic-bezier(.2,.9,.3,1.2)}
-@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.96)}to{opacity:1;transform:none}}
+.tnode.enter{animation:pop .3s cubic-bezier(.22,.7,.3,1)}
+@keyframes pop{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 .tnode.leave{animation:fadeout .3s forwards}
 @keyframes fadeout{to{opacity:0;transform:translateX(10px)}}
-.tnode.item.short::after{
-  content:"";position:absolute;inset:-1px;border-radius:9px;pointer-events:none;
-}
 .pulse{position:relative}
-.pulse::before{
-  content:"";position:absolute;left:-1px;top:-1px;right:-1px;bottom:-1px;border-radius:9px;
-  border:1px solid var(--short);animation:pulsering 1.8s ease-out infinite;pointer-events:none
-}
-@keyframes pulsering{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.06)}}
 .tree-empty{
-  border:1px dashed var(--border);border-radius:var(--radius);padding:48px 20px;text-align:center;
+  border:1px solid var(--border);border-radius:0;padding:56px 20px;text-align:center;
   color:var(--faint);font-size:13px;background:var(--surface)
 }
-.tree-empty b{display:block;color:var(--muted);font-size:14px;font-weight:600;margin-bottom:4px}
+.tree-empty b{display:block;color:var(--text);font-size:16px;font-weight:700;margin-bottom:6px}
 
 /* ============================================================
    CART
    ============================================================ */
-.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.stat div{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface-2)}
-.stat .k{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:640}
-.stat .v{font-size:17px;font-weight:660;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
-.stat .v small{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:0}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 18px}
+.stat>div{border:1px solid var(--border);border-radius:0;padding:11px 13px;background:transparent}
+.stat .k{font-size:9px;letter-spacing:.15em;font-family:var(--mono);text-transform:uppercase;color:var(--faint);font-weight:640;white-space:nowrap}
+.stat .v{font-size:20px;font-weight:800;letter-spacing:-.03em;margin-top:3px;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:0;white-space:nowrap}
 .diff{
-  border:1px solid color-mix(in srgb,var(--brand) 34%,var(--border));background:var(--brand-soft);
-  border-radius:10px;padding:9px 11px;margin-bottom:12px;font-size:12px;animation:pop .3s
+  border:none;border-left:2px solid var(--text);background:transparent;
+  border-radius:0;padding:2px 0 2px 12px;margin-bottom:16px;font-size:12px;animation:pop .3s
 }
-.diff h5{margin:0 0 5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);font-weight:660}
+.diff h5{margin:0 0 6px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text);font-weight:700;font-family:var(--mono)}
 .diff ul{margin:0;padding:0;list-style:none;display:grid;gap:3px}
 .diff li{display:flex;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted)}
 .diff li b{font-weight:600;color:var(--text);font-family:var(--sans)}
-.line{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:9px}
-.line:hover{background:var(--surface-2)}
+.line{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.line:hover{background:transparent}
+.line:hover .nm{color:var(--red)}
 .line .ic{color:var(--muted);flex:none;display:grid;place-items:center}
 .line .body{flex:1;min-width:0}
-.line .nm{font-size:13px;font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.line .nm{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:.12s}
 .line .sub{font-size:11px;color:var(--faint);font-family:var(--mono)}
-.line .pr{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.line .pr{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;font-weight:500}
 .kitcheck{
-  border:1px solid color-mix(in srgb,var(--warn) 40%,var(--border));border-radius:10px;padding:8px 10px;
-  font-size:12px;color:var(--warn);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start
+  border:none;border-left:2px solid var(--warn);border-radius:0;padding:2px 0 2px 12px;
+  font-size:12px;color:var(--warn);margin-bottom:16px;display:flex;gap:8px;align-items:flex-start
 }
-.foot{flex:none;border-top:1px solid var(--border);padding:12px 16px;display:grid;gap:9px;background:var(--surface)}
+.foot{flex:none;border-top:1px solid var(--border-2);padding:16px 18px 18px;display:grid;gap:11px;background:var(--surface)}
 .total{display:flex;align-items:baseline;justify-content:space-between}
-.total .lbl{font-size:12px;color:var(--muted)}
-.total .amt{font-size:22px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.total .lbl{font-size:10px;color:var(--faint);letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.total .amt{font-size:27px;font-weight:800;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
 .policy{font-size:11px;color:var(--faint);display:flex;align-items:center;gap:6px;line-height:1.35}
 
 /* ============================================================
    CONSOLE
    ============================================================ */
 .console{
-  flex:none;background:var(--console-bg);color:var(--console-fg);border-top:1px solid var(--console-line);
+  flex:none;background:var(--console-bg);color:var(--console-fg);border-top:1px solid var(--border-2);
   display:flex;flex-direction:column;height:246px;transition:height .22s cubic-bezier(.3,0,.2,1)
 }
 .console.collapsed{height:44px}
@@ -264,38 +274,38 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   flex:none;display:flex;align-items:center;gap:10px;height:44px;padding:0 16px;
   border-bottom:1px solid var(--console-line)
 }
-.chead .t{font-size:11px;font-weight:660;letter-spacing:.08em;text-transform:uppercase;color:var(--console-dim)}
+.chead .t{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--console-fg)}
 .chead .tools{font-family:var(--mono);font-size:11px;color:var(--console-dim)}
 .chead button{color:var(--console-dim);font-size:11px}
 .chead button:hover{color:var(--console-fg)}
 .cbody{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 268px}
 .clog{overflow-y:auto;padding:10px 16px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.65}
 .clog .row{display:flex;gap:8px;white-space:pre-wrap;word-break:break-word}
-.clog .req{color:#7FD1A6}
+.clog .req{color:#E9E5DF;font-weight:500}
 .clog .res{color:var(--console-dim)}
-.clog .wait{color:#E0B357}
-.clog .usr{color:#8FB8E8}
-.clog .err{color:#E08A6A}
+.clog .wait{color:#D9A441}
+.clog .usr{color:#C9A227}
+.clog .err{color:#FF5C77;font-weight:500}
 .clog .ms{color:#5D584F;margin-left:auto;flex:none;padding-left:10px}
 .clog .grp{border-left:1px solid var(--console-line);padding-left:10px;margin:6px 0 6px 2px}
 .clog .cmp{color:#5D584F;font-style:italic}
 .cside{border-left:1px solid var(--console-line);display:flex;flex-direction:column;min-height:0}
-.cside .lbl{padding:10px 14px 6px;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--console-dim);font-weight:660}
+.cside .lbl{padding:12px 14px 8px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--console-dim);font-weight:700}
 .chips{padding:0 12px 10px;display:grid;gap:5px;overflow-y:auto}
 .chip{
-  text-align:left;border:1px solid var(--console-line);border-radius:8px;padding:6px 9px;
-  font-size:11.5px;color:var(--console-fg);line-height:1.35;background:rgba(255,255,255,.02)
+  text-align:left;border:1px solid var(--console-line);border-radius:0;padding:7px 10px;
+  font-size:11.5px;color:var(--console-fg);line-height:1.4;background:transparent
 }
 .chip:hover{background:rgba(255,255,255,.07);border-color:#3C3934}
-.chip b{display:block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--console-dim);font-weight:640;margin-bottom:2px}
+.chip b{display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#C9A227;font-weight:700;margin-bottom:3px}
 .cinput{flex:none;border-top:1px solid var(--console-line);display:flex;gap:8px;padding:9px 16px}
 .cinput input{
-  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--console-line);border-radius:8px;
+  flex:1;background:transparent;border:1px solid var(--console-line);border-radius:0;
   height:32px;padding:0 11px;color:var(--console-fg);font-family:var(--mono);font-size:12px
 }
 .cinput input::placeholder{color:#5D584F}
 .cinput input:focus{outline:none;border-color:#4C4740}
-.cinput .go{background:#2A6E4E;color:#fff;border-radius:8px;height:32px;padding:0 14px;font-size:12px;font-weight:600}
+.cinput .go{background:var(--console-fg);color:var(--console-bg);border-radius:0;height:32px;padding:0 16px;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 
 /* ============================================================
    MODAL
@@ -303,16 +313,17 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .scrim{position:fixed;inset:0;background:rgba(15,14,12,.5);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:60;animation:fade .16s}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .modal{
-  width:min(420px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);
-  border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.4);overflow:hidden;animation:rise .22s cubic-bezier(.2,.9,.3,1.05)
+  width:min(430px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border-2);
+  border-radius:0;box-shadow:0 28px 70px -24px rgba(0,0,0,.35);overflow:hidden;animation:rise .22s cubic-bezier(.2,.9,.3,1.05)
 }
 @keyframes rise{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 .modal .mh{padding:16px 18px 12px;border-bottom:1px solid var(--border)}
 .modal .badge{
   display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
-  font-weight:660;color:var(--brand);background:var(--brand-soft);border-radius:999px;padding:3px 9px;margin-bottom:8px
+  font-weight:700;color:var(--red);background:transparent;border:1px solid var(--red);
+  border-radius:0;padding:3px 9px;margin-bottom:10px;letter-spacing:.14em
 }
-.modal h3{margin:0;font-size:16px;font-weight:660;letter-spacing:-.01em}
+.modal h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em}
 .modal .mh p{margin:4px 0 0;font-size:12px;color:var(--muted)}
 .modal .mb{padding:12px 18px;max-height:38vh;overflow-y:auto}
 .mrow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0}
@@ -320,30 +331,30 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .mrow .p{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .mdiv{height:1px;background:var(--border);margin:10px 0}
 .mcard{
-  display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--border);
-  border-radius:10px;background:var(--surface-2);font-size:12.5px
+  display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--border);
+  border-radius:0;background:transparent;font-size:12.5px
 }
 .mcard .num{font-family:var(--mono);letter-spacing:.06em}
 .mcard .tag{margin-left:auto;font-size:10px;color:var(--faint)}
 .mnote{
-  margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.5;
-  border-left:2px solid var(--brand);padding-left:9px
+  margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.55;
+  border-left:2px solid var(--red);padding-left:11px
 }
 .modal .mf{padding:12px 18px 16px;display:flex;gap:8px;border-top:1px solid var(--border)}
 .modal .mf .btn{flex:1;height:38px}
 .receipt{text-align:center;padding:26px 20px}
-.receipt .ok{width:44px;height:44px;border-radius:50%;background:var(--have-soft);color:var(--have);display:grid;place-items:center;margin:0 auto 12px}
+.receipt .ok{width:46px;height:46px;border-radius:0;border:1px solid var(--red);color:var(--red);display:grid;place-items:center;margin:0 auto 14px}
 .receipt h3{margin:0 0 4px;font-size:16px}
 .receipt p{margin:0;font-size:12.5px;color:var(--muted)}
 .receipt .oid{font-family:var(--mono);font-size:12px;margin-top:10px;color:var(--faint)}
 
 .tip{
   position:fixed;z-index:70;max-width:250px;background:var(--console-bg);color:var(--console-fg);
-  border-radius:9px;padding:8px 10px;font-size:11.5px;line-height:1.45;pointer-events:none;
+  border-radius:0;padding:8px 10px;font-size:11.5px;line-height:1.45;pointer-events:none;
   box-shadow:0 8px 24px -8px rgba(0,0,0,.5);opacity:0;transition:opacity .12s
 }
 .tip.on{opacity:1}
-.tip b{color:#7FD1A6;font-weight:600}
+.tip b{color:#C9A227;font-weight:700}
 
 @media (max-width:1120px){
   main{grid-template-columns:224px minmax(0,1fr) 280px}
@@ -360,7 +371,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
     </svg>
     Cook<em>Tree</em>
   </div>
-  <div class="tagline">One tool layer. The UI and the agent both call it.</div>
+  <div class="tagline">ONE TOOL LAYER &nbsp;·&nbsp; THE UI AND THE AGENT BOTH CALL IT</div>
   <div class="spacer"></div>
   <div class="pill" id="mcpPill"><span class="dot"></span><span id="mcpText">checking WebMCP…</span></div>
   <div class="seg" id="modeSeg">
@@ -399,8 +410,8 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
       <div class="tree-bar">
         Dependency Tree
         <div class="legend">
-          <span><i style="background:var(--have)"></i>in kitchen</span>
-          <span><i style="background:var(--short)"></i>short</span>
+          <span><i style="background:var(--border-2)"></i>in kitchen</span>
+          <span><i style="background:var(--red)"></i>short</span>
         </div>
       </div>
       <div class="tree-scroll" id="treeScroll"></div>
@@ -481,12 +492,13 @@ const ICONS = {
 };
 function ic(n,s){s=s||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||ICONS.leaf)+'</svg>';}
 
+/* No colour coding — the guide sets cuisine in letterspaced caps instead. */
 const CUISINE = {
-  home:{c:'#8A6D3B',label:'Home'},
-  sichuan:{c:'#C0392B',label:'Sichuan'},
-  cantonese:{c:'#1E7C8F',label:'Cantonese'},
-  thai:{c:'#4E944F',label:'Thai'},
-  italian:{c:'#B7791F',label:'Italian'}
+  home:{label:'Home cooking'},
+  sichuan:{label:'Sichuan'},
+  cantonese:{label:'Cantonese'},
+  thai:{label:'Thai'},
+  italian:{label:'Italian'}
 };
 
 // pack = how it is actually SOLD. This is what makes merging non-trivial.
@@ -554,7 +566,7 @@ const DISH_BY_ID = Object.fromEntries(DISHES.map(d=>[d.id,d]));
 const ACCOUNT = [
   {id:'card',    label:'Card on file',     value:'•••• 4242',     phantom:'update_payment_method'},
   {id:'address', label:'Delivery address', value:'1 Valencia St', phantom:'update_delivery_address'},
-  {id:'history', label:'Order history',    value:'37 orders',     phantom:'read_order_history'},
+  {id:'history', label:'Order history',    value:'37 earlier',    phantom:'read_order_history'},
   {id:'limit',   label:'Spend limit',      value:'$25 / order',   phantom:'update_spend_limit'}
 ];
 
@@ -571,7 +583,7 @@ const S = {
   servings:2,
   lastDiff:null,
   lastExplain:null,
-  optimized:false,
+  orders:[],           // orders placed THROUGH this agent, this session
   focus:null,          // hovered/selected node key
   mode:'agent',
   mcp:false
@@ -621,6 +633,11 @@ function computeCart(){
   return {lines, total, rawLines, mergedLines:lines.length, gearMissing:t.gearMissing, tree:t};
 }
 
+function mergeStats(){
+  const c=computeCart();
+  return {requests:c.tree.rawRequests, unique:c.tree.items.length,
+          alreadyHave:c.tree.items.length-c.mergedLines, toBuy:c.mergedLines, total:c.total};
+}
 function snapshot(){
   const c = computeCart();
   return {total:c.total, map:Object.fromEntries(c.lines.map(l=>[l.id,{packs:l.packs,name:l.name,label:l.packLabel,price:l.price}]))};
@@ -671,6 +688,25 @@ const TOOLS = [
   summary:r=>'added '+(r.added.join(', ')||'nothing')
 },
 {
+  name:'remove_from_kitchen',
+  description:'Take items out of the kitchen, or reduce a quantity — you used something up, or logged it by mistake. The undo for add_to_kitchen.',
+  inputSchema:{type:'object',properties:{items:{type:'array',items:{type:'object',properties:{
+    item:{type:'string'},qty:{type:'number'}}}}},required:['items']},
+  run(a){
+    const removed=[];
+    (a.items||[]).forEach(it=>{
+      const id=resolveItem(typeof it==='string'?it:it.item);
+      if(!id || !(S.kitchen[id]>0)) return;
+      const q = it && it.qty;
+      if(q && S.kitchen[id]>q){ S.kitchen[id]-=q; removed.push(CATALOG[id].n+' −'+qty(q,CATALOG[id].u)); }
+      else { delete S.kitchen[id]; removed.push(CATALOG[id].n); }
+    });
+    return {removed, kitchenSize:Object.keys(S.kitchen).length, merge:mergeStats()};
+  },
+  summary:r=>r.removed.length ? ('removed '+r.removed.join(', ')+' · now '+r.merge.toBuy+' to buy · '+money(r.merge.total))
+                              : 'nothing matched — kitchen unchanged'
+},
+{
   name:'search_dishes',
   description:'Find dishes by cooking time, cuisine, ingredients that must be used, or ingredients to avoid. Ranks by how much of it you already have.',
   inputSchema:{type:'object',properties:{
@@ -708,12 +744,13 @@ const TOOLS = [
     if(a.servings) S.servings=a.servings;
     const ids=(a.dishes||[]).map(resolveDish).filter(Boolean);
     if(a.replace) S.week=ids; else ids.forEach(id=>{ if(S.week.indexOf(id)<0) S.week.push(id); });
-    S.optimized=false; S.focus=null; S.lastExplain=null;
+    S.focus=null; S.lastExplain=null;
     const after=snapshot(); const d=diffSnap(before,after);
     S.lastDiff={title:'plan_week', d};
-    return {week:S.week.map(i=>DISH_BY_ID[i].n), servings:S.servings, diff:d, total:after.total};
+    return {week:S.week.map(i=>DISH_BY_ID[i].n), servings:S.servings, diff:d, merge:mergeStats()};
   },
-  summary:r=>r.week.length+' dishes · '+(r.diff.added.length)+' new buys · total '+money(r.total)
+  summary:r=>r.week.length+' dishes · '+r.merge.requests+' ingredient requests → '+r.merge.unique+
+    ' unique → '+r.merge.toBuy+' to buy · '+money(r.merge.total)
 },
 {
   name:'remove_dish',
@@ -723,12 +760,13 @@ const TOOLS = [
     const id=resolveDish(a.dish);
     if(!id||S.week.indexOf(id)<0) return {error:'not in this week’s plan: '+a.dish};
     const before=snapshot();
-    S.week=S.week.filter(x=>x!==id); S.optimized=false; S.focus=null; S.lastExplain=null;
+    S.week=S.week.filter(x=>x!==id); S.focus=null; S.lastExplain=null;
     const after=snapshot(); const d=diffSnap(before,after);
     S.lastDiff={title:'remove_dish · '+DISH_BY_ID[id].n, d};
-    return {removed:DISH_BY_ID[id].n, diff:d, total:after.total};
+    return {removed:DISH_BY_ID[id].n, diff:d, merge:mergeStats()};
   },
-  summary:r=>r.error?r.error:('−'+r.diff.removed.length+' lines, '+r.diff.reduced.length+' reduced, '+money(r.diff.delta))
+  summary:r=>r.error?r.error:('−'+r.diff.removed.length+' lines, '+r.diff.reduced.length+' reduced, '+
+    money(r.diff.delta)+' → '+r.merge.toBuy+' to buy · '+money(r.merge.total))
 },
 {
   name:'explain_shortage',
@@ -753,21 +791,20 @@ const TOOLS = [
     (r.substitutes.length?' · '+r.substitutes.length+' substitute(s)':''))
 },
 {
-  name:'optimize_cart',
-  description:'Merge every dish’s requirement into one purchasable list: dedupe shared ingredients, subtract what is in the kitchen, and round up to real pack sizes.',
-  inputSchema:{type:'object',properties:{budget:{type:'number'}}},
+  name:'get_order_status',
+  description:'Where is the order this agent placed? Covers only orders placed in this session — the account’s earlier orders are a different thing and are not exposed.',
+  inputSchema:{type:'object',properties:{orderId:{type:'string'}}},
   run(a){
-    const c=computeCart(); S.optimized=true;
-    const res={
-      ingredientRequests:c.tree.rawRequests, uniqueIngredients:c.tree.items.length,
-      alreadyInKitchen:c.tree.items.length-c.mergedLines, itemsToBuy:c.mergedLines,
-      total:c.total,
-      lines:c.lines.map(l=>({item:l.name, buy:l.packs+'× '+l.packLabel, covers:l.from.map(f=>DISH_BY_ID[f].n), price:l.price}))
-    };
-    if(a.budget && c.total>a.budget) res.overBudget=Math.round((c.total-a.budget)*100)/100;
-    return res;
+    if(!S.orders.length){
+      return {orders:[], note:'No order placed through this agent yet. The 37 earlier orders on this '+
+        'account are a different scope — read_order_history is not a registered tool.'};
+    }
+    const o = a.orderId ? S.orders.find(x=>x.orderId===a.orderId) : S.orders[S.orders.length-1];
+    if(!o) return {error:'not an order from this session: '+a.orderId};
+    return {order:o, scope:'this session only · 37 earlier orders not exposed'};
   },
-  summary:r=>r.ingredientRequests+' ingredient requests across '+S.week.length+' dishes → '+r.uniqueIngredients+' unique → '+r.itemsToBuy+' to buy · '+money(r.total)
+  summary:r=>r.order ? (r.order.orderId+' · '+r.order.status+' · '+r.order.eta+' · '+money(r.order.total))
+          : (r.error || 'no order from this agent yet — past orders are out of scope')
 },
 {
   name:'checkout',
@@ -783,8 +820,10 @@ const TOOLS = [
       if(!ok) return {status:'declined_by_user', total:c.total};
     }
     const orderId='MM-'+Math.floor(4000+Math.random()*5000);
+    S.orders.push({orderId, total:c.total, items:c.lines.length,
+                   status:'preparing', eta:'tomorrow 8–10am', store:'Meridian Market (demo)'});
     showReceipt(orderId, c.total);
-    S.week=[]; S.lastDiff=null; S.optimized=false;
+    S.week=[]; S.lastDiff=null;
     return {status:'placed', orderId, store:'Meridian Market (demo)', items:c.lines.length,
             total:c.total, paymentMethod:'•••• 4242', cardNumber:'<never exposed to tools>'};
   },
@@ -886,14 +925,16 @@ const SCRIPTS=[
           ['plan_week',{dishes:['Mapo Tofu','Chicken Fried Rice','Steamed Sea Bass'],servings:2,replace:true}]]},
   {label:'Explain', text:'Why is Sichuan peppercorn on my list?',
    steps:[['explain_shortage',{item:'Sichuan peppercorn'}]]},
-  {label:'Merge', text:'Merge duplicates and show me the real cart.',
-   steps:[['optimize_cart',{}]]},
   {label:'Diff', text:'Drop Mapo Tofu.',
    steps:[['remove_dish',{dish:'Mapo Tofu'}]]},
+  {label:'Used up', text:'I used up the garlic.',
+   steps:[['remove_from_kitchen',{items:[{item:'garlic'}]}]]},
   {label:'Refused', text:'Change my delivery address to 42 Mission St.',
    steps:[['update_delivery_address',{address:'42 Mission St'}]]},
   {label:'Pay', text:'Check out.',
-   steps:[['checkout',{}]]}
+   steps:[['checkout',{}]]},
+  {label:'Scope', text:'Where is my order?',
+   steps:[['get_order_status',{}]]}
 ];
 
 /* Intents the site never registered. Routed to a tool name that does not exist,
@@ -912,7 +953,11 @@ function route(text){
   if(ph) return [[ph.tool, {request:text}]];
   const dishHit=()=>{ for(const d of DISHES){ if(s.indexOf(d.n.toLowerCase())>=0||(d.cn&&text.indexOf(d.cn)>=0)) return d.n; } return null; };
   if(/check ?out|place (the )?order|pay|下单|结账/.test(s)) return [['checkout',{}]];
-  if(/merge|dedup|optimi[sz]e|combine|real cart|合并/.test(s)) return [['optimize_cart',{}]];
+  if(/where.*(order|delivery)|order status|when.*arrive|我的单|到哪了|送到没/.test(s)) return [['get_order_status',{}]];
+  if(/used up|ran out of|out of |throw(n)? out|用完|吃完|没有了/.test(s)){
+    const m=s.replace(/^.*?(used up|ran out of|out of |用完了?|吃完了?)\s*(the |my )?/,'').replace(/[.。!]/g,'');
+    return [['remove_from_kitchen',{items:[{item:m.trim()}]}]];
+  }
   if(/(remove|drop|delete|cancel|去掉|删)/.test(s)){ const d=dishHit(); if(d) return [['remove_dish',{dish:d}]]; }
   if(/^why|why is|explain|为什么/.test(s)){
     const m=s.replace(/^.*?(why is|why do i need|explain|为什么)\s*/,'').replace(/[?？.]/g,'').replace(/ on my list| in the cart/,'');
@@ -1047,10 +1092,10 @@ function renderMenu(){
     const miss=keys.filter(k=>(S.kitchen[k]||0)<d.need[k]).length;
     const cu=CUISINE[d.cuisine];
     return '<button class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'">'+
-      '<span class="bar" style="background:'+cu.c+'"></span>'+
-      '<span class="top"><span class="glyph" style="background:'+cu.c+'">'+ic(d.glyph,14)+'</span>'+
+      '<span class="cui">'+cu.label+'</span>'+
+      '<span class="top"><span class="glyph">'+ic(d.glyph,15)+'</span>'+
       '<span><span class="nm">'+d.n+'</span><span class="cn">'+d.cn+'</span></span></span>'+
-      '<span class="meta">'+d.min+'m · '+(miss?'<span class="miss">'+miss+' short</span>':'<span class="ok">all set</span>')+'</span>'+
+      '<span class="meta">'+d.min+' MIN'+(miss?' · <span class="miss">'+miss+' SHORT</span>':' · <span class="ok">COMPLETE</span>')+'</span>'+
     '</button>';
   }).join('');
 }
@@ -1077,9 +1122,9 @@ function renderTree(){
     '<div class="tree" id="tree">'+
       '<svg class="edges" id="edges"></svg>'+
       '<div class="tcol" id="colDish"><div class="tlabel">This week</div>'+
-        S.week.map(id=>{ const d=DISH_BY_ID[id]; const cu=CUISINE[d.cuisine];
+        S.week.map(id=>{ const d=DISH_BY_ID[id];
           return '<button class="tnode dish" data-node="'+d.id+'">'+
-            '<span class="glyph" style="background:'+cu.c+'">'+ic(d.glyph,12)+'</span>'+
+            '<span class="glyph">'+ic(d.glyph,13)+'</span>'+
             '<span class="nm">'+d.n+'</span><span class="qt">'+d.min+'m</span></button>';
         }).join('')+
       '</div>'+
@@ -1158,10 +1203,10 @@ function renderCart(){
         '<b style="color:var(--text)">Substitutes</b><br>'+x.substitutes.map(sb=>'· '+sb).join('<br>')+'</div>':'')+
       '</div>';
   }
-  if(S.optimized){
-    html+='<div class="stat"><div><div class="k">Ingredient asks</div><div class="v">'+c.tree.rawRequests+
-      ' <small>across '+S.week.length+' dishes</small></div></div>'+
-      '<div><div class="k">Things to buy</div><div class="v">'+c.mergedLines+' <small>items</small></div></div></div>';
+  if(S.week.length){
+    html+='<div class="stat"><div><div class="k">Requests</div><div class="v">'+c.tree.rawRequests+
+      ' <small>/ '+S.week.length+' dishes</small></div></div>'+
+      '<div><div class="k">To buy</div><div class="v">'+c.mergedLines+' <small>items</small></div></div></div>';
   }
   html+= c.lines.length ? c.lines.map(l=>
     '<div class="line" data-line="'+l.id+'"><span class="ic">'+ic(l.icon,16)+'</span>'+
@@ -1180,7 +1225,10 @@ function renderAccount(){
       '<span class="nm">'+a.label+'</span>'+
       '<span class="vl">'+a.value+'</span></div>').join('')+
     '<div class="anote">The site holds all of this. None of it was registered as a tool, '+
-    'so no agent can reach it — including this one.</div>';
+    'so no agent can reach it — including this one.<br><br>'+
+    'Scope, not category: <b style="color:var(--text)">get_order_status</b> is registered — '+
+    'it covers orders this agent placed. Reading the 37 earlier ones is a different scope, '+
+    'and has no tool.</div>';
 }
 function flashAccount(toolName){
   const a=ACCOUNT.find(x=>x.phantom===toolName); if(!a) return;

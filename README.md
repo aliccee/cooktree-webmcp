@@ -47,12 +47,13 @@ every action to find out — and then diff two screenshots itself.
 Five dishes want garlic. A naive list has five garlic rows.
 
 ```js
-optimize_cart({})
+plan_week({ dishes: [...], servings: 2 })
 
-→ 21 ingredient requests across 3 dishes
-  → 16 unique ingredients
-  → 8 things to buy          ($41.10)
+→ merge: { requests: 21, unique: 16, toBuy: 8, total: 41.10 }
 ```
+
+The merge is part of `plan_week`'s own return, not a second call — asking for the plan and
+asking what to buy were never two questions.
 
 Dedupe across dishes, subtract what's already in the kitchen, round up to **real pack
 sizes** (garlic is sold as a head, not by the gram). None of these intermediate states are
@@ -105,20 +106,44 @@ model behaves.
 
 Eight tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
 
-| Tool | What it does |
+Nine tools. Seven of them only read or compute. Exactly one moves money, and it stops for a
+human. That ratio is the design, not an accident.
+
+| Tool | What it does | If it fired 100× by mistake |
+|---|---|---|
+| `get_kitchen` | What you already own | nothing happens |
+| `add_to_kitchen` | Record inventory | reversible |
+| `remove_from_kitchen` | Take something out — you used it up | reversible |
+| `search_dishes` | Filter by time / cuisine / must-use | nothing happens |
+| `plan_week` | Set the week — returns a **diff plus merge stats**, not a page | a draft gets messy |
+| `remove_dish` | Drop a dish — returns what vanishes and what shrinks | a draft gets messy |
+| `explain_shortage` | Why is this on my list, who needs it, substitutes | nothing happens |
+| `get_order_status` | Where is the order **this agent placed** | nothing happens |
+| `checkout` | **Human-gated + capped.** Card never enters the tool result | money moves — so it stops |
+
+### How the set was chosen
+
+One question per candidate: **if this fired 100 times by mistake, what happens?**
+
+| Answer | Verdict |
 |---|---|
-| `get_kitchen` | What you already own — ingredients, seasonings, cookware |
-| `add_to_kitchen` | Record inventory |
-| `search_dishes` | Filter by time / cuisine / must-use, ranked by what you already have |
-| `plan_week` | Set the week — **returns a diff**, not a page |
-| `remove_dish` | Drop a dish — returns which lines vanish and which shrink |
-| `explain_shortage` | Why is this on my list, who needs it, what substitutes |
-| `optimize_cart` | Dedupe → subtract kitchen → round to pack sizes |
-| `checkout` | Human-gated. Card never enters the tool result |
+| Nothing happens | expose |
+| A draft gets messy, undo fixes it | expose |
+| Money moves | expose, but gate it on a human and cap it |
+| **The account becomes someone else's** | **never expose** |
 
 Deliberately **not** registered: `update_delivery_address`, `update_payment_method`,
 `read_order_history`, `update_spend_limit`. Asking for any of them fails through the real
 unknown-tool path — there is no fake refusal branch.
+
+`update_delivery_address` is first on that list for a reason. Changing a delivery address is
+the classic first step of account takeover: no card is stolen, every future order just ships
+somewhere else, and unlike a card change it usually sends no alert.
+
+**Scope, not category.** `get_order_status` *is* registered — it covers orders this agent
+placed. Reading the account's 37 earlier orders is a different scope and has no tool. The
+same noun splits into an exposed half and a withheld half; that granularity is the whole
+point of registering functions instead of handing over a session.
 
 Clicking an ingredient in the tree fires `explain_shortage`. Clicking a dish card fires
 `plan_week`. It all shows up in the console as tool calls, because it's all the same layer.
@@ -152,10 +177,11 @@ Five preset prompts live in the console sidebar. In order:
 
 1. *"I have tofu and beef. Plan three dinners under 45 minutes."* — `search_dishes` → `plan_week`, tree grows
 2. *"Why is Sichuan peppercorn on my list?"* — one dish lights up, everything else dims, substitutes appear
-3. *"Merge duplicates and show me the real cart."* — 21 → 16 → 8
-4. *"Drop Mapo Tofu."* — the diff, in one call
+3. *"Drop Mapo Tofu."* — the diff, in one call
+4. *"I used up the garlic."* — inventory shrinks, the buy list grows to match
 5. *"Change my delivery address to 42 Mission St."* — **refused; the account row lights up**
 6. *"Check out."* — the confirmation sheet
+7. *"Where is my order?"* — answered for this session, scoped away from the 37 earlier ones
 
 ## Screenshots
 
