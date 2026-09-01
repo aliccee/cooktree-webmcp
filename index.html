@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CookTree — agent-native meal planning</title>
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg:#FBFAF7; --surface:#FFFFFF; --surface-2:#F5F3EE; --border:#E7E2D8;
+  --text:#191815; --muted:#7A756A; --faint:#A9A399;
+  --brand:#1F6F4A; --brand-soft:#E6F1EA;
+  --have:#2E7D5B; --have-soft:#E7F2EC;
+  --short:#B4541E; --short-soft:#FBEEE4;
+  --warn:#8A6D1F;
+  --console-bg:#171614; --console-fg:#E9E5DC; --console-dim:#8B857A; --console-line:#2A2824;
+  --shadow:0 1px 2px rgba(25,24,21,.05), 0 8px 24px -12px rgba(25,24,21,.18);
+  --radius:12px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#121110; --surface:#1B1A18; --surface-2:#232120; --border:#302D29;
+  --text:#F3F0EA; --muted:#9A948A; --faint:#6E685E;
+  --brand:#4FBE8B; --brand-soft:#163024;
+  --have:#4FBE8B; --have-soft:#152B21;
+  --short:#E08A54; --short-soft:#33210F;
+  --warn:#D8B85C;
+  --console-bg:#0D0C0B; --console-line:#242220;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:14px/1.5 var(--sans); -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+input,select{font:inherit;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;border:3px solid transparent;background-clip:content-box}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+header{
+  flex:none; display:flex; align-items:center; gap:14px;
+  padding:0 18px; height:56px; border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.logo{display:flex;align-items:center;gap:8px;font-weight:640;font-size:16px;letter-spacing:-.01em}
+.logo svg{color:var(--brand)}
+.logo em{font-style:normal;color:var(--brand)}
+.tagline{font-size:12px;color:var(--faint);border-left:1px solid var(--border);padding-left:14px;margin-left:2px}
+.spacer{flex:1}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;
+  border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted);
+  background:var(--surface-2); white-space:nowrap;
+}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.pill.live{color:var(--have);border-color:color-mix(in srgb,var(--have) 34%,transparent);background:var(--have-soft)}
+.pill.live .dot{background:var(--have);box-shadow:0 0 0 0 color-mix(in srgb,var(--have) 60%,transparent);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--have) 55%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.seg{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-2)}
+.seg button{padding:5px 11px;font-size:12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);font-weight:560;box-shadow:var(--shadow)}
+.iconbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+.iconbtn:hover{background:var(--surface-2);border-color:var(--border);color:var(--text)}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-height:0}
+.col{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.col.left{border-right:1px solid var(--border);background:var(--surface)}
+.col.right{border-left:1px solid var(--border);background:var(--surface)}
+.panel-head{
+  flex:none;display:flex;align-items:center;gap:8px;padding:14px 16px 10px;
+  font-size:11px;font-weight:660;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+}
+.panel-head .count{
+  margin-left:auto;font-size:11px;letter-spacing:0;text-transform:none;font-weight:600;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted)
+}
+.scroll{flex:1;overflow-y:auto;padding:0 16px 16px}
+
+/* ============================================================
+   KITCHEN
+   ============================================================ */
+.kgroup{margin-bottom:14px}
+.kgroup h4{
+  margin:0 0 6px;font-size:11px;font-weight:640;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);display:flex;align-items:center;gap:6px
+}
+.kgroup h4 span{color:var(--faint);font-weight:500}
+.kitem{
+  display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;font-size:13px;
+}
+.kitem:hover{background:var(--surface-2)}
+.kitem .ic{color:var(--muted);flex:none;display:grid;place-items:center}
+.kitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kitem .qt{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.empty{font-size:12px;color:var(--faint);padding:4px 8px;font-style:italic}
+.addrow{display:flex;gap:6px;margin-top:8px}
+.addrow input,.addrow select{
+  flex:1;min-width:0;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);font-size:12px
+}
+.addrow select{flex:none;width:82px}
+.btn{
+  height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);
+  font-size:12px;font-weight:560;display:inline-flex;align-items:center;gap:6px;justify-content:center
+}
+.btn:hover{background:var(--border)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.wide{width:100%;height:34px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ============================================================
+   MENU STRIP
+   ============================================================ */
+.menu-wrap{flex:none;border-bottom:1px solid var(--border);background:var(--bg)}
+.menu{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding:12px 18px 14px;scrollbar-width:thin}
+.dish{
+  flex:none;width:150px;text-align:left;padding:9px 10px;border:1px solid var(--border);
+  border-radius:11px;background:var(--surface);transition:.14s;position:relative;overflow:hidden
+}
+.dish:hover{border-color:var(--faint);transform:translateY(-1px);box-shadow:var(--shadow)}
+.dish[data-on="1"]{border-color:var(--brand);background:var(--brand-soft)}
+.dish .bar{position:absolute;left:0;top:0;bottom:0;width:3px}
+.dish .top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.dish .glyph{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;flex:none;color:#fff}
+.dish .nm{display:block;font-size:12.5px;font-weight:600;line-height:1.25;letter-spacing:-.01em}
+.dish .cn{display:block;font-size:11px;color:var(--faint);margin-top:1px}
+.dish .top>span:last-child{min-width:0;flex:1}
+.dish .meta{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.dish .miss{color:var(--short)}
+.dish .ok{color:var(--have)}
+
+/* ============================================================
+   TREE
+   ============================================================ */
+.tree-wrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.tree-bar{
+  flex:none;display:flex;align-items:center;gap:10px;padding:11px 18px 9px;
+  font-size:11px;font-weight:660;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)
+}
+.legend{margin-left:auto;display:flex;gap:12px;text-transform:none;letter-spacing:0;font-weight:500;font-size:11px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.tree-scroll{flex:1;overflow:auto;padding:4px 18px 24px}
+.tree{position:relative;display:grid;grid-template-columns:minmax(150px,222px) minmax(90px,300px) minmax(170px,246px);gap:0;align-items:start;max-width:800px}
+.tree .edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.tcol{display:flex;flex-direction:column;gap:7px;position:relative;z-index:1}
+.tcol.mid{pointer-events:none}
+.tlabel{font-size:10px;font-weight:660;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:2px 0 2px}
+.tlabel.short{color:var(--short)}
+.tnode{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);
+  border-radius:9px;background:var(--surface);font-size:12.5px;transition:.14s;text-align:left;width:100%
+}
+.tnode.dish{padding:9px 10px}
+.tnode .glyph{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;flex:none;color:#fff}
+.tnode .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:520}
+.tnode .qt{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex:none}
+.tnode.item.have{border-color:color-mix(in srgb,var(--have) 26%,var(--border));background:var(--have-soft)}
+.tnode.item.have .ic{color:var(--have)}
+.tnode.item.short{border-color:color-mix(in srgb,var(--short) 40%,var(--border));background:var(--short-soft)}
+.tnode.item.short .ic{color:var(--short)}
+.tnode.item.short .qt{color:var(--short)}
+.tnode.dim{opacity:.26}
+.tnode.hi{box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 45%,transparent);border-color:var(--brand)}
+.tnode:hover{transform:translateX(1px)}
+.tnode .ic{flex:none;display:grid;place-items:center;color:var(--muted)}
+.tnode.enter{animation:pop .34s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.96)}to{opacity:1;transform:none}}
+.tnode.leave{animation:fadeout .3s forwards}
+@keyframes fadeout{to{opacity:0;transform:translateX(10px)}}
+.tnode.item.short::after{
+  content:"";position:absolute;inset:-1px;border-radius:9px;pointer-events:none;
+}
+.pulse{position:relative}
+.pulse::before{
+  content:"";position:absolute;left:-1px;top:-1px;right:-1px;bottom:-1px;border-radius:9px;
+  border:1px solid var(--short);animation:pulsering 1.8s ease-out infinite;pointer-events:none
+}
+@keyframes pulsering{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.06)}}
+.tree-empty{
+  border:1px dashed var(--border);border-radius:var(--radius);padding:48px 20px;text-align:center;
+  color:var(--faint);font-size:13px;background:var(--surface)
+}
+.tree-empty b{display:block;color:var(--muted);font-size:14px;font-weight:600;margin-bottom:4px}
+
+/* ============================================================
+   CART
+   ============================================================ */
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat div{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface-2)}
+.stat .k{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:640}
+.stat .v{font-size:17px;font-weight:660;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:0}
+.diff{
+  border:1px solid color-mix(in srgb,var(--brand) 34%,var(--border));background:var(--brand-soft);
+  border-radius:10px;padding:9px 11px;margin-bottom:12px;font-size:12px;animation:pop .3s
+}
+.diff h5{margin:0 0 5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);font-weight:660}
+.diff ul{margin:0;padding:0;list-style:none;display:grid;gap:3px}
+.diff li{display:flex;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.diff li b{font-weight:600;color:var(--text);font-family:var(--sans)}
+.line{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:9px}
+.line:hover{background:var(--surface-2)}
+.line .ic{color:var(--muted);flex:none;display:grid;place-items:center}
+.line .body{flex:1;min-width:0}
+.line .nm{font-size:13px;font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.line .sub{font-size:11px;color:var(--faint);font-family:var(--mono)}
+.line .pr{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.kitcheck{
+  border:1px solid color-mix(in srgb,var(--warn) 40%,var(--border));border-radius:10px;padding:8px 10px;
+  font-size:12px;color:var(--warn);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start
+}
+.foot{flex:none;border-top:1px solid var(--border);padding:12px 16px;display:grid;gap:9px;background:var(--surface)}
+.total{display:flex;align-items:baseline;justify-content:space-between}
+.total .lbl{font-size:12px;color:var(--muted)}
+.total .amt{font-size:22px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.policy{font-size:11px;color:var(--faint);display:flex;align-items:center;gap:6px;line-height:1.35}
+
+/* ============================================================
+   CONSOLE
+   ============================================================ */
+.console{
+  flex:none;background:var(--console-bg);color:var(--console-fg);border-top:1px solid var(--console-line);
+  display:flex;flex-direction:column;height:246px;transition:height .22s cubic-bezier(.3,0,.2,1)
+}
+.console.collapsed{height:44px}
+.chead{
+  flex:none;display:flex;align-items:center;gap:10px;height:44px;padding:0 16px;
+  border-bottom:1px solid var(--console-line)
+}
+.chead .t{font-size:11px;font-weight:660;letter-spacing:.08em;text-transform:uppercase;color:var(--console-dim)}
+.chead .tools{font-family:var(--mono);font-size:11px;color:var(--console-dim)}
+.chead button{color:var(--console-dim);font-size:11px}
+.chead button:hover{color:var(--console-fg)}
+.cbody{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 268px}
+.clog{overflow-y:auto;padding:10px 16px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.65}
+.clog .row{display:flex;gap:8px;white-space:pre-wrap;word-break:break-word}
+.clog .req{color:#7FD1A6}
+.clog .res{color:var(--console-dim)}
+.clog .wait{color:#E0B357}
+.clog .usr{color:#8FB8E8}
+.clog .err{color:#E08A6A}
+.clog .ms{color:#5D584F;margin-left:auto;flex:none;padding-left:10px}
+.clog .grp{border-left:1px solid var(--console-line);padding-left:10px;margin:6px 0 6px 2px}
+.clog .cmp{color:#5D584F;font-style:italic}
+.cside{border-left:1px solid var(--console-line);display:flex;flex-direction:column;min-height:0}
+.cside .lbl{padding:10px 14px 6px;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--console-dim);font-weight:660}
+.chips{padding:0 12px 10px;display:grid;gap:5px;overflow-y:auto}
+.chip{
+  text-align:left;border:1px solid var(--console-line);border-radius:8px;padding:6px 9px;
+  font-size:11.5px;color:var(--console-fg);line-height:1.35;background:rgba(255,255,255,.02)
+}
+.chip:hover{background:rgba(255,255,255,.07);border-color:#3C3934}
+.chip b{display:block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--console-dim);font-weight:640;margin-bottom:2px}
+.cinput{flex:none;border-top:1px solid var(--console-line);display:flex;gap:8px;padding:9px 16px}
+.cinput input{
+  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--console-line);border-radius:8px;
+  height:32px;padding:0 11px;color:var(--console-fg);font-family:var(--mono);font-size:12px
+}
+.cinput input::placeholder{color:#5D584F}
+.cinput input:focus{outline:none;border-color:#4C4740}
+.cinput .go{background:#2A6E4E;color:#fff;border-radius:8px;height:32px;padding:0 14px;font-size:12px;font-weight:600}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.scrim{position:fixed;inset:0;background:rgba(15,14,12,.5);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:60;animation:fade .16s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{
+  width:min(420px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.4);overflow:hidden;animation:rise .22s cubic-bezier(.2,.9,.3,1.05)
+}
+@keyframes rise{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.modal .mh{padding:16px 18px 12px;border-bottom:1px solid var(--border)}
+.modal .badge{
+  display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:660;color:var(--brand);background:var(--brand-soft);border-radius:999px;padding:3px 9px;margin-bottom:8px
+}
+.modal h3{margin:0;font-size:16px;font-weight:660;letter-spacing:-.01em}
+.modal .mh p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.modal .mb{padding:12px 18px;max-height:38vh;overflow-y:auto}
+.mrow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0}
+.mrow .q{color:var(--faint);font-family:var(--mono);font-size:11px}
+.mrow .p{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mdiv{height:1px;background:var(--border);margin:10px 0}
+.mcard{
+  display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--border);
+  border-radius:10px;background:var(--surface-2);font-size:12.5px
+}
+.mcard .num{font-family:var(--mono);letter-spacing:.06em}
+.mcard .tag{margin-left:auto;font-size:10px;color:var(--faint)}
+.mnote{
+  margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.5;
+  border-left:2px solid var(--brand);padding-left:9px
+}
+.modal .mf{padding:12px 18px 16px;display:flex;gap:8px;border-top:1px solid var(--border)}
+.modal .mf .btn{flex:1;height:38px}
+.receipt{text-align:center;padding:26px 20px}
+.receipt .ok{width:44px;height:44px;border-radius:50%;background:var(--have-soft);color:var(--have);display:grid;place-items:center;margin:0 auto 12px}
+.receipt h3{margin:0 0 4px;font-size:16px}
+.receipt p{margin:0;font-size:12.5px;color:var(--muted)}
+.receipt .oid{font-family:var(--mono);font-size:12px;margin-top:10px;color:var(--faint)}
+
+.tip{
+  position:fixed;z-index:70;max-width:250px;background:var(--console-bg);color:var(--console-fg);
+  border-radius:9px;padding:8px 10px;font-size:11.5px;line-height:1.45;pointer-events:none;
+  box-shadow:0 8px 24px -8px rgba(0,0,0,.5);opacity:0;transition:opacity .12s
+}
+.tip.on{opacity:1}
+.tip b{color:#7FD1A6;font-weight:600}
+
+@media (max-width:1120px){
+  main{grid-template-columns:224px minmax(0,1fr) 280px}
+  .cbody{grid-template-columns:minmax(0,1fr) 220px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 21v-7"/><path d="M12 14c0-3.5 2.6-6 6-6 0 3.5-2.6 6-6 6z"/><path d="M12 14c0-3.5-2.6-6-6-6 0 3.5 2.6 6 6 6z"/><path d="M9 21h6"/>
+    </svg>
+    Cook<em>Tree</em>
+  </div>
+  <div class="tagline">One tool layer. The UI and the agent both call it.</div>
+  <div class="spacer"></div>
+  <div class="pill" id="mcpPill"><span class="dot"></span><span id="mcpText">checking WebMCP…</span></div>
+  <div class="seg" id="modeSeg">
+    <button data-mode="agent" aria-pressed="true">Agent</button>
+    <button data-mode="manual" aria-pressed="false">Manual</button>
+  </div>
+  <button class="iconbtn" id="themeBtn" title="Toggle theme">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+  </button>
+</header>
+
+<main>
+  <!-- ============ KITCHEN ============ -->
+  <section class="col left">
+    <div class="panel-head">My Kitchen <span class="count" id="kCount">0</span></div>
+    <div class="scroll" id="kitchenBody"></div>
+    <div style="flex:none;padding:0 16px 14px">
+      <div class="addrow">
+        <input id="addName" placeholder="Add item…">
+        <select id="addCat">
+          <option value="ingredient">food</option>
+          <option value="seasoning">season</option>
+          <option value="cookware">gear</option>
+        </select>
+      </div>
+      <div class="addrow">
+        <button class="btn wide" id="addBtn">Add to kitchen</button>
+      </div>
+      <div class="addrow">
+        <button class="btn wide" id="demoBtn">Load demo kitchen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CENTER ============ -->
+  <section class="col">
+    <div class="menu-wrap">
+      <div class="panel-head" style="padding-bottom:0">This Week <span class="count" id="wCount">0 dishes</span></div>
+      <div class="menu" id="menu"></div>
+    </div>
+    <div class="tree-wrap">
+      <div class="tree-bar">
+        Dependency Tree
+        <div class="legend">
+          <span><i style="background:var(--have)"></i>in kitchen</span>
+          <span><i style="background:var(--short)"></i>short</span>
+        </div>
+      </div>
+      <div class="tree-scroll" id="treeScroll"></div>
+    </div>
+  </section>
+
+  <!-- ============ CART ============ -->
+  <section class="col right">
+    <div class="panel-head">To Buy <span class="count" id="cCount">0</span></div>
+    <div class="scroll" id="cartBody"></div>
+    <div class="foot">
+      <div class="total"><span class="lbl">Estimated total</span><span class="amt" id="total">$0.00</span></div>
+      <div class="policy">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Auto-approve under $25 · human confirm above
+      </div>
+      <button class="btn primary wide" id="checkoutBtn" disabled>Check out</button>
+    </div>
+  </section>
+</main>
+
+<!-- ============ AGENT CONSOLE ============ -->
+<section class="console" id="console">
+  <div class="chead">
+    <span class="t">Agent Console</span>
+    <span class="tools" id="toolCount">8 tools registered</span>
+    <div class="spacer" style="flex:1"></div>
+    <button id="clearLog">clear</button>
+    <button id="toggleConsole">collapse</button>
+  </div>
+  <div class="cbody">
+    <div class="clog" id="log"></div>
+    <div class="cside">
+      <div class="lbl">Demo script</div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+  <div class="cinput">
+    <input id="prompt" placeholder="Tell the agent what you want to cook…" autocomplete="off">
+    <button class="go" id="send">Run</button>
+  </div>
+</section>
+
+<div class="tip" id="tip"></div>
+
+<script>
+"use strict";
+/* ==================================================================
+   CookTree — WebMCP reference build
+   ------------------------------------------------------------------
+   Sections:
+     1. DATA        catalog / dishes / demo kitchen
+     2. STATE       kitchen, week, cart
+     3. ENGINE      tree computation, cart merge, diffing
+     4. TOOLS       the single tool layer (UI + agent both call this)
+     5. WEBMCP      registration with document/navigator fallback
+     6. AGENT       local intent router used when no MCP client attached
+     7. RENDER      DOM + SVG edges
+   ================================================================== */
+
+/* ============ 1. DATA ============ */
+const ICONS = {
+  leaf:'<path d="M4 20c0-9 7-15 16-15 0 9-7 15-16 15z"/><path d="M4 20c4-4 7-6 12-8"/>',
+  meat:'<path d="M14 4a6 6 0 015 9c-1 2-3 2-4 4s-2 4-4 4a5 5 0 01-5-5c0-2 2-3 3-5s1-4 3-5a5 5 0 012-2z"/>',
+  fish:'<path d="M2 12c3-4 7-6 11-6s7 3 9 6c-2 3-5 6-9 6s-8-2-11-6z"/><circle cx="17" cy="11" r="1"/><path d="M2 12l4-3v6z"/>',
+  egg:'<path d="M12 3c3.9 0 6 5.4 6 9.5A6 6 0 016 12.5C6 8.4 8.1 3 12 3z"/>',
+  grain:'<path d="M12 21V9"/><path d="M12 12c0-3 2-5 5-5 0 3-2 5-5 5z"/><path d="M12 12c0-3-2-5-5-5 0 3 2 5 5 5z"/><path d="M12 6c0-2 1.5-3 3-3 0 2-1.5 3-3 3z"/>',
+  noodle:'<path d="M3 8c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><path d="M3 13c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><path d="M3 18c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/>',
+  dairy:'<path d="M8 3h8l-1 4v13a1 1 0 01-1 1h-4a1 1 0 01-1-1V7z"/><path d="M8 8h8"/>',
+  bottle:'<path d="M10 2h4v4l2 3v12a1 1 0 01-1 1H9a1 1 0 01-1-1V9l2-3z"/><path d="M8 13h8"/>',
+  spice:'<path d="M12 2c2 3 4 5 4 8a4 4 0 01-8 0c0-3 2-5 4-8z"/><path d="M9 18h6"/><path d="M10 21h4"/>',
+  pot:'<path d="M4 9h16v7a4 4 0 01-4 4H8a4 4 0 01-4-4z"/><path d="M2 11h2M20 11h2"/><path d="M8 9V6M16 9V6"/>',
+  wok:'<path d="M3 10h18a9 9 0 01-18 0z"/><path d="M21 10l2-3"/>',
+  steam:'<path d="M4 12h16v5a3 3 0 01-3 3H7a3 3 0 01-3-3z"/><path d="M8 8c0-1.5 1-1.5 1-3M12 8c0-1.5 1-1.5 1-3M16 8c0-1.5 1-1.5 1-3"/>',
+  bowl:'<path d="M3 11h18a9 9 0 01-18 0z"/><path d="M6 8c1-1 1-2 0-3M10 8c1-1 1-2 0-3"/>',
+  plate:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/>'
+};
+function ic(n,s){s=s||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||ICONS.leaf)+'</svg>';}
+
+const CUISINE = {
+  home:{c:'#8A6D3B',label:'Home'},
+  sichuan:{c:'#C0392B',label:'Sichuan'},
+  cantonese:{c:'#1E7C8F',label:'Cantonese'},
+  thai:{c:'#4E944F',label:'Thai'},
+  italian:{c:'#B7791F',label:'Italian'}
+};
+
+// pack = how it is actually SOLD. This is what makes merging non-trivial.
+const CATALOG = {
+  tomato:        {n:'Tomato',            cat:'ingredient',u:'g', pack:{size:500,label:'1 lb',price:2.40}, icon:'leaf'},
+  onion:         {n:'Onion',             cat:'ingredient',u:'g', pack:{size:200,label:'1 onion',price:0.90}, icon:'leaf'},
+  garlic:        {n:'Garlic',            cat:'ingredient',u:'g', pack:{size:50, label:'1 head',price:0.60}, icon:'leaf'},
+  ginger:        {n:'Ginger',            cat:'ingredient',u:'g', pack:{size:80, label:'1 knob',price:0.95}, icon:'leaf'},
+  scallion:      {n:'Scallion',          cat:'ingredient',u:'g', pack:{size:100,label:'1 bunch',price:1.20}, icon:'leaf'},
+  cilantro:      {n:'Cilantro',          cat:'ingredient',u:'g', pack:{size:60, label:'1 bunch',price:1.10}, icon:'leaf'},
+  broccoli:      {n:'Broccoli',          cat:'ingredient',u:'g', pack:{size:400,label:'1 crown',price:2.60}, icon:'leaf'},
+  eggplant:      {n:'Eggplant',          cat:'ingredient',u:'g', pack:{size:250,label:'1 eggplant',price:1.80}, icon:'leaf'},
+  thaibasil:     {n:'Thai basil',        cat:'ingredient',u:'g', pack:{size:40, label:'1 pack',price:2.20}, icon:'leaf'},
+  beef:          {n:'Beef brisket',      cat:'ingredient',u:'g', pack:{size:500,label:'500 g',price:12.50}, icon:'meat'},
+  pork:          {n:'Ground pork',       cat:'ingredient',u:'g', pack:{size:400,label:'400 g',price:6.40}, icon:'meat'},
+  chicken:       {n:'Chicken thigh',     cat:'ingredient',u:'g', pack:{size:500,label:'500 g',price:6.90}, icon:'meat'},
+  seabass:       {n:'Sea bass',          cat:'ingredient',u:'g', pack:{size:600,label:'1 whole fish',price:14.00}, icon:'fish'},
+  egg:           {n:'Egg',               cat:'ingredient',u:'pc',pack:{size:12, label:'1 dozen',price:4.20}, icon:'egg'},
+  tofu:          {n:'Silken tofu',       cat:'ingredient',u:'g', pack:{size:350,label:'1 box',price:2.10}, icon:'dairy'},
+  rice:          {n:'Rice',              cat:'ingredient',u:'g', pack:{size:1000,label:'1 kg',price:3.80}, icon:'grain'},
+  spaghetti:     {n:'Spaghetti',         cat:'ingredient',u:'g', pack:{size:500,label:'1 box',price:2.30}, icon:'noodle'},
+  coconutmilk:   {n:'Coconut milk',      cat:'ingredient',u:'ml',pack:{size:400,label:'1 can',price:2.50}, icon:'bottle'},
+  parmesan:      {n:'Parmesan',          cat:'ingredient',u:'g', pack:{size:150,label:'1 wedge',price:5.60}, icon:'dairy'},
+  soy:           {n:'Soy sauce',         cat:'seasoning', u:'ml',pack:{size:500,label:'1 bottle',price:3.80}, icon:'bottle'},
+  salt:          {n:'Salt',              cat:'seasoning', u:'g', pack:{size:500,label:'1 box',price:1.20}, icon:'spice'},
+  sugar:         {n:'Sugar',             cat:'seasoning', u:'g', pack:{size:500,label:'1 bag',price:1.60}, icon:'spice'},
+  cornstarch:    {n:'Cornstarch',        cat:'seasoning', u:'g', pack:{size:300,label:'1 box',price:1.90}, icon:'spice'},
+  wine:          {n:'Cooking wine',      cat:'seasoning', u:'ml',pack:{size:500,label:'1 bottle',price:3.20}, icon:'bottle'},
+  fishsauce:     {n:'Fish sauce',        cat:'seasoning', u:'ml',pack:{size:300,label:'1 bottle',price:3.60}, icon:'bottle'},
+  doubanjiang:   {n:'Doubanjiang',       cat:'seasoning', u:'g', pack:{size:250,label:'1 jar',price:4.40}, icon:'spice',
+                  subs:['Gochujang + a pinch of salt — sweeter, less fermented depth']},
+  peppercorn:    {n:'Sichuan peppercorn',cat:'seasoning', u:'g', pack:{size:50, label:'1 pack',price:3.90}, icon:'spice',
+                  subs:['Black pepper — you lose the numbing (má) note entirely','Coriander seed + a little lemon zest — closest aromatic stand-in']},
+  staranise:     {n:'Star anise',        cat:'seasoning', u:'g', pack:{size:30, label:'1 pack',price:2.80}, icon:'spice',
+                  subs:['Five-spice powder, half the amount']},
+  currypaste:    {n:'Green curry paste', cat:'seasoning', u:'g', pack:{size:100,label:'1 jar',price:3.40}, icon:'spice'},
+  oliveoil:      {n:'Olive oil',         cat:'seasoning', u:'ml',pack:{size:500,label:'1 bottle',price:7.20}, icon:'bottle'},
+  wok:           {n:'Wok',               cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:32.00}, icon:'wok'},
+  pot:           {n:'Stock pot',         cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:28.00}, icon:'pot'},
+  steamer:       {n:'Steamer',           cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:24.00}, icon:'steam'}
+};
+
+const DISHES = [
+  {id:'beefstew', n:'Tomato Beef Stew', cn:'番茄牛腩', cuisine:'home', min:90, glyph:'pot', serves:2, gear:['pot'],
+   need:{beef:500,tomato:400,onion:150,ginger:20,garlic:15,staranise:3,soy:30,sugar:10,salt:5}},
+  {id:'mapo', n:'Mapo Tofu', cn:'麻婆豆腐', cuisine:'sichuan', min:25, glyph:'bowl', serves:2, gear:['wok'],
+   need:{tofu:350,pork:150,doubanjiang:30,peppercorn:4,garlic:12,scallion:20,soy:15,cornstarch:10}},
+  {id:'curry', n:'Thai Green Curry', cn:'泰式绿咖喱', cuisine:'thai', min:40, glyph:'bowl', serves:2, gear:['wok'],
+   need:{chicken:400,currypaste:50,coconutmilk:400,thaibasil:15,fishsauce:20,eggplant:200,sugar:8}},
+  {id:'friedrice', n:'Chicken Fried Rice', cn:'鸡肉蛋炒饭', cuisine:'home', min:15, glyph:'plate', serves:2, gear:['wok'],
+   need:{rice:350,egg:2,chicken:150,scallion:20,garlic:8,soy:20,salt:3}},
+  {id:'bolognese', n:'Spaghetti Bolognese', cn:'意式肉酱面', cuisine:'italian', min:45, glyph:'noodle', serves:2, gear:['pot'],
+   need:{spaghetti:200,pork:250,tomato:300,onion:120,garlic:15,oliveoil:25,parmesan:30,salt:5}},
+  {id:'steamfish', n:'Steamed Sea Bass', cn:'清蒸鲈鱼', cuisine:'cantonese', min:20, glyph:'fish', serves:2, gear:['steamer'],
+   need:{seabass:600,ginger:25,scallion:30,soy:25,wine:15,cilantro:10}},
+  {id:'broccoli', n:'Garlic Broccoli', cn:'蒜蓉西兰花', cuisine:'cantonese', min:10, glyph:'plate', serves:2, gear:['wok'],
+   need:{broccoli:400,garlic:20,salt:3,oliveoil:15}},
+  {id:'eggdrop', n:'Egg Drop Soup', cn:'蛋花汤', cuisine:'home', min:10, glyph:'bowl', serves:2, gear:['pot'],
+   need:{egg:2,scallion:10,cornstarch:8,salt:3,ginger:8}}
+];
+const DISH_BY_ID = Object.fromEntries(DISHES.map(d=>[d.id,d]));
+
+const DEMO_KITCHEN = {
+  soy:300, salt:400, sugar:300, cornstarch:200, oliveoil:250,
+  rice:800, egg:6, garlic:30, ginger:40, tofu:350, beef:500,
+  wok:1, pot:1
+};
+
+/* ============ 2. STATE ============ */
+const S = {
+  kitchen:{},          // id -> qty
+  week:[],             // dish ids
+  servings:2,
+  lastDiff:null,
+  lastExplain:null,
+  optimized:false,
+  focus:null,          // hovered/selected node key
+  mode:'agent',
+  mcp:false
+};
+
+/* ============ 3. ENGINE ============ */
+function computeTree(){
+  const need = {};                       // id -> {req, from:[dishId]}
+  S.week.forEach(id=>{
+    const d = DISH_BY_ID[id]; if(!d) return;
+    const scale = S.servings / d.serves;
+    for(const k in d.need){
+      if(!need[k]) need[k] = {req:0, from:[]};
+      need[k].req += d.need[k]*scale;
+      need[k].from.push(id);
+    }
+  });
+  const items = Object.keys(need).map(k=>{
+    const c = CATALOG[k], have = S.kitchen[k]||0;
+    const req = Math.round(need[k].req*10)/10;
+    const short = Math.max(0, Math.round((req-have)*10)/10);
+    return {id:k, name:c.n, cat:c.cat, unit:c.u, icon:c.icon, req, have, short, from:need[k].from};
+  });
+  items.sort((a,b)=>(b.short>0)-(a.short>0) || b.from.length-a.from.length || a.name.localeCompare(b.name));
+  // gear
+  const gear = [];
+  S.week.forEach(id=>(DISH_BY_ID[id].gear||[]).forEach(g=>{ if(gear.indexOf(g)<0) gear.push(g); }));
+  const gearMissing = gear.filter(g=>!(S.kitchen[g]>0));
+  return {items, gear, gearMissing, rawRequests:Object.values(need).reduce((s,v)=>s+v.from.length,0)};
+}
+
+function computeCart(){
+  const t = computeTree();
+  const lines = t.items.filter(i=>i.short>0 && i.cat!=='cookware').map(i=>{
+    const p = CATALOG[i.id].pack;
+    const packs = Math.max(1, Math.ceil(i.short/p.size));
+    return {
+      id:i.id, name:i.name, icon:i.icon, cat:i.cat,
+      short:i.short, unit:i.unit, packs, packLabel:p.label, packSize:p.size,
+      price:Math.round(packs*p.price*100)/100,
+      from:i.from, waste:Math.round((packs*p.size - i.short)*10)/10
+    };
+  });
+  const total = Math.round(lines.reduce((s,l)=>s+l.price,0)*100)/100;
+  const rawLines = t.items.filter(i=>i.short>0 && i.cat!=='cookware')
+                          .reduce((s,i)=>s+i.from.length,0);
+  return {lines, total, rawLines, mergedLines:lines.length, gearMissing:t.gearMissing, tree:t};
+}
+
+function snapshot(){
+  const c = computeCart();
+  return {total:c.total, map:Object.fromEntries(c.lines.map(l=>[l.id,{packs:l.packs,name:l.name,label:l.packLabel,price:l.price}]))};
+}
+function diffSnap(a,b){
+  const removed=[], reduced=[], added=[], increased=[];
+  for(const k in a.map){
+    if(!b.map[k]) removed.push(a.map[k].name+' — '+a.map[k].packs+'× '+a.map[k].label);
+    else if(b.map[k].packs<a.map[k].packs) reduced.push(a.map[k].name+' '+a.map[k].packs+'× → '+b.map[k].packs+'×');
+    else if(b.map[k].packs>a.map[k].packs) increased.push(a.map[k].name+' '+a.map[k].packs+'× → '+b.map[k].packs+'×');
+  }
+  for(const k in b.map) if(!a.map[k]) added.push(b.map[k].name+' — '+b.map[k].packs+'× '+b.map[k].label);
+  return {removed, reduced, added, increased, delta:Math.round((b.total-a.total)*100)/100};
+}
+const money = v => (v<0?'-$':'$')+Math.abs(v).toFixed(2);
+const qty = (v,u)=> u==='pc' ? (Math.round(v*10)/10)+'' : (v>=1000? (v/1000).toFixed(1)+(u==='ml'?'L':'kg') : (Math.round(v*10)/10)+u);
+
+/* ============ 4. TOOLS — the single layer ============ */
+/* Both the site's own UI and any agent call invoke(). That is the whole point. */
+const TOOLS = [
+{
+  name:'get_kitchen',
+  description:'List what the user already has: ingredients, seasonings and cookware, with quantities.',
+  inputSchema:{type:'object',properties:{}},
+  run(){
+    const g={ingredient:[],seasoning:[],cookware:[]};
+    for(const k in S.kitchen){ const c=CATALOG[k]; if(c) g[c.cat].push({item:c.n, qty:qty(S.kitchen[k],c.u)}); }
+    return {ingredients:g.ingredient, seasonings:g.seasoning, cookware:g.cookware.map(x=>x.item)};
+  },
+  summary:r=>r.ingredients.length+' ingredients · '+r.seasonings.length+' seasonings · '+r.cookware.length+' cookware'
+},
+{
+  name:'add_to_kitchen',
+  description:'Record items the user already owns. Quantities are optional; a sensible default pack is assumed.',
+  inputSchema:{type:'object',properties:{items:{type:'array',items:{type:'object',properties:{
+    item:{type:'string'},qty:{type:'number'}}}}},required:['items']},
+  run(a){
+    const added=[];
+    (a.items||[]).forEach(it=>{
+      const id = resolveItem(typeof it==='string'?it:it.item);
+      if(!id) return;
+      const q = (it&&it.qty) || CATALOG[id].pack.size;
+      S.kitchen[id]=(S.kitchen[id]||0)+q;
+      added.push(CATALOG[id].n);
+    });
+    return {added, kitchenSize:Object.keys(S.kitchen).length};
+  },
+  summary:r=>'added '+(r.added.join(', ')||'nothing')
+},
+{
+  name:'search_dishes',
+  description:'Find dishes by cooking time, cuisine, ingredients that must be used, or ingredients to avoid. Ranks by how much of it you already have.',
+  inputSchema:{type:'object',properties:{
+    maxMinutes:{type:'number'}, cuisine:{type:'string'},
+    mustUse:{type:'array',items:{type:'string'}}, exclude:{type:'array',items:{type:'string'}},
+    limit:{type:'number'}}},
+  run(a){
+    const must=(a.mustUse||[]).map(resolveItem).filter(Boolean);
+    const excl=(a.exclude||[]).map(resolveItem).filter(Boolean);
+    let out = DISHES.filter(d=>{
+      if(a.maxMinutes && d.min>a.maxMinutes) return false;
+      if(a.cuisine && d.cuisine!==String(a.cuisine).toLowerCase()) return false;
+      if(must.length && !must.every(m=>d.need[m]!=null)) return false;
+      if(excl.length && excl.some(e=>d.need[e]!=null)) return false;
+      return true;
+    }).map(d=>{
+      const keys=Object.keys(d.need);
+      const haveN=keys.filter(k=>(S.kitchen[k]||0)>=d.need[k]).length;
+      return {dish:d.n, id:d.id, minutes:d.min, cuisine:d.cuisine,
+              haveRatio:Math.round(haveN/keys.length*100)/100, missing:keys.length-haveN};
+    }).sort((x,y)=>y.haveRatio-x.haveRatio || x.minutes-y.minutes);
+    if(a.limit) out=out.slice(0,a.limit);
+    return {matches:out};
+  },
+  summary:r=>r.matches.length+' dishes: '+r.matches.slice(0,3).map(m=>m.dish).join(', ')
+},
+{
+  name:'plan_week',
+  description:'Set this week’s dishes. Returns the DIFF to the shopping cart, not the whole page — the caller never has to re-read the UI.',
+  inputSchema:{type:'object',properties:{
+    dishes:{type:'array',items:{type:'string'}}, servings:{type:'number'}, replace:{type:'boolean'}},
+    required:['dishes']},
+  run(a){
+    const before=snapshot();
+    if(a.servings) S.servings=a.servings;
+    const ids=(a.dishes||[]).map(resolveDish).filter(Boolean);
+    if(a.replace) S.week=ids; else ids.forEach(id=>{ if(S.week.indexOf(id)<0) S.week.push(id); });
+    S.optimized=false; S.focus=null; S.lastExplain=null;
+    const after=snapshot(); const d=diffSnap(before,after);
+    S.lastDiff={title:'plan_week', d};
+    return {week:S.week.map(i=>DISH_BY_ID[i].n), servings:S.servings, diff:d, total:after.total};
+  },
+  summary:r=>r.week.length+' dishes · '+(r.diff.added.length)+' new buys · total '+money(r.total)
+},
+{
+  name:'remove_dish',
+  description:'Drop a dish from the week. Returns the recomputed diff: which shopping lines disappear and which shrink because the ingredient was shared.',
+  inputSchema:{type:'object',properties:{dish:{type:'string'}},required:['dish']},
+  run(a){
+    const id=resolveDish(a.dish);
+    if(!id||S.week.indexOf(id)<0) return {error:'not in this week’s plan: '+a.dish};
+    const before=snapshot();
+    S.week=S.week.filter(x=>x!==id); S.optimized=false; S.focus=null; S.lastExplain=null;
+    const after=snapshot(); const d=diffSnap(before,after);
+    S.lastDiff={title:'remove_dish · '+DISH_BY_ID[id].n, d};
+    return {removed:DISH_BY_ID[id].n, diff:d, total:after.total};
+  },
+  summary:r=>r.error?r.error:('−'+r.diff.removed.length+' lines, '+r.diff.reduced.length+' reduced, '+money(r.diff.delta))
+},
+{
+  name:'explain_shortage',
+  description:'Explain why an item is on the shopping list: how much is needed, which dishes need it, what you already have, and what could substitute.',
+  inputSchema:{type:'object',properties:{item:{type:'string'}},required:['item']},
+  run(a){
+    const id=resolveItem(a.item);
+    if(!id) return {error:'unknown item: '+a.item};
+    const t=computeTree(); const row=t.items.find(i=>i.id===id);
+    if(!row) return {error:CATALOG[id].n+' is not needed by this week’s plan'};
+    S.focus=id;
+    const out={
+      item:row.name,
+      required:qty(row.req,row.unit), inKitchen:qty(row.have,row.unit), short:qty(row.short,row.unit),
+      neededBy:row.from.map(f=>DISH_BY_ID[f].n),
+      buy: row.short>0 ? Math.ceil(row.short/CATALOG[id].pack.size)+'× '+CATALOG[id].pack.label : null,
+      substitutes: CATALOG[id].subs||[]
+    };
+    S.lastExplain=out; return out;
+  },
+  summary:r=>r.error?r.error:(r.item+': need '+r.required+', have '+r.inKitchen+' — for '+r.neededBy.join(' + ')+
+    (r.substitutes.length?' · '+r.substitutes.length+' substitute(s)':''))
+},
+{
+  name:'optimize_cart',
+  description:'Merge every dish’s requirement into one purchasable list: dedupe shared ingredients, subtract what is in the kitchen, and round up to real pack sizes.',
+  inputSchema:{type:'object',properties:{budget:{type:'number'}}},
+  run(a){
+    const c=computeCart(); S.optimized=true;
+    const res={
+      ingredientRequests:c.tree.rawRequests, uniqueIngredients:c.tree.items.length,
+      alreadyInKitchen:c.tree.items.length-c.mergedLines, itemsToBuy:c.mergedLines,
+      total:c.total,
+      lines:c.lines.map(l=>({item:l.name, buy:l.packs+'× '+l.packLabel, covers:l.from.map(f=>DISH_BY_ID[f].n), price:l.price}))
+    };
+    if(a.budget && c.total>a.budget) res.overBudget=Math.round((c.total-a.budget)*100)/100;
+    return res;
+  },
+  summary:r=>r.ingredientRequests+' ingredient requests across '+S.week.length+' dishes → '+r.uniqueIngredients+' unique → '+r.itemsToBuy+' to buy · '+money(r.total)
+},
+{
+  name:'checkout',
+  description:'Place the grocery order. Requires human confirmation in the page above the spend limit. The tool result contains an order id only — card details never leave the site.',
+  inputSchema:{type:'object',properties:{note:{type:'string'}}},
+  async run(a, ctx){
+    const c=computeCart();
+    if(!c.lines.length) return {error:'cart is empty'};
+    const LIMIT=25;
+    if(c.total>LIMIT){
+      ctx && ctx.log('wait','⏸ awaiting human confirmation — site-rendered sheet, agent is blocked');
+      const ok = await confirmSheet(c);
+      if(!ok) return {status:'declined_by_user', total:c.total};
+    }
+    const orderId='MM-'+Math.floor(4000+Math.random()*5000);
+    showReceipt(orderId, c.total);
+    S.week=[]; S.lastDiff=null; S.optimized=false;
+    return {status:'placed', orderId, store:'Meridian Market (demo)', items:c.lines.length,
+            total:c.total, paymentMethod:'•••• 4242', cardNumber:'<never exposed to tools>'};
+  },
+  summary:r=>r.error?r.error:(r.status==='placed'?('order '+r.orderId+' · '+money(r.total)+' · paid with •••• 4242'):r.status)
+}
+];
+const TOOL_BY_NAME = Object.fromEntries(TOOLS.map(t=>[t.name,t]));
+
+/* fuzzy resolvers so both the agent and the UI can pass human words */
+function resolveItem(s){
+  if(!s) return null; s=String(s).toLowerCase().trim();
+  if(CATALOG[s]) return s;
+  for(const k in CATALOG){ if(CATALOG[k].n.toLowerCase()===s) return k; }
+  for(const k in CATALOG){ const n=CATALOG[k].n.toLowerCase(); if(n.indexOf(s)>=0||s.indexOf(n)>=0) return k; }
+  const alias={'peppercorn':'peppercorn','sichuan pepper':'peppercorn','szechuan peppercorn':'peppercorn',
+    'green onion':'scallion','spring onion':'scallion','tofu':'tofu','soy':'soy','fish':'seabass',
+    'bass':'seabass','pork':'pork','beef':'beef','eggs':'egg','oil':'oliveoil','noodles':'spaghetti',
+    'pasta':'spaghetti','curry paste':'currypaste','coconut':'coconutmilk','doubanjiang':'doubanjiang',
+    'chili bean paste':'doubanjiang','wine':'wine','anise':'staranise'};
+  for(const k in alias){ if(s.indexOf(k)>=0) return alias[k]; }
+  return null;
+}
+function resolveDish(s){
+  if(!s) return null; s=String(s).toLowerCase().trim();
+  if(DISH_BY_ID[s]) return s;
+  let best=null;
+  DISHES.forEach(d=>{
+    const n=d.n.toLowerCase();
+    if(n===s||d.cn===s) best=d.id;
+    else if(!best && (n.indexOf(s)>=0 || s.indexOf(n)>=0 || (d.cn&&s.indexOf(d.cn)>=0))) best=d.id;
+  });
+  if(!best){ // token overlap
+    const toks=s.split(/\s+/).filter(t=>t.length>2);
+    DISHES.forEach(d=>{ if(!best && toks.some(t=>d.n.toLowerCase().indexOf(t)>=0)) best=d.id; });
+  }
+  return best;
+}
+
+/* single entry point */
+let CALLS=0;
+async function invoke(name, args, source){
+  const tool=TOOL_BY_NAME[name];
+  const t0=performance.now();
+  logRow('req','→ '+name+' '+compact(args||{}), source);
+  if(!tool){ logRow('err','← unknown tool'); return {error:'unknown tool'}; }
+  let res;
+  try{ res = await tool.run(args||{}, {log:(k,m)=>logRow(k,m)}); }
+  catch(e){ logRow('err','← '+e.message); return {error:e.message}; }
+  const ms=Math.max(1,Math.round(performance.now()-t0));
+  CALLS++;
+  render();
+  logRow('res','← '+tool.summary(res), null, ms);
+  return res;
+}
+
+/* ============ 5. WEBMCP REGISTRATION ============ */
+function getModelContext(){
+  try{ if(typeof document!=='undefined' && document.modelContext) return document.modelContext; }catch(e){}
+  try{ if(typeof navigator!=='undefined' && navigator.modelContext) return navigator.modelContext; }catch(e){}
+  return null;
+}
+function registerWebMCP(){
+  const mc=getModelContext();
+  const pill=document.getElementById('mcpPill'), txt=document.getElementById('mcpText');
+  if(!mc){
+    S.mcp=false;
+    txt.textContent='WebMCP not detected · local agent';
+    pill.title='navigator/document.modelContext is unavailable. Chrome 149+ origin trial or chrome://flags. The same tool layer runs through the built-in agent below.';
+    return;
+  }
+  const defs=TOOLS.map(t=>({
+    name:t.name, description:t.description, inputSchema:t.inputSchema,
+    async execute(args){
+      const r=await invoke(t.name, args||{}, 'webmcp');
+      return {content:[{type:'text', text:JSON.stringify(r)}]};
+    }
+  }));
+  try{
+    if(typeof mc.provideContext==='function') mc.provideContext({tools:defs});
+    else if(typeof mc.registerTool==='function') defs.forEach(d=>mc.registerTool(d));
+    S.mcp=true;
+    pill.classList.add('live');
+    txt.textContent='WebMCP connected · '+defs.length+' tools';
+  }catch(e){
+    txt.textContent='WebMCP error · local agent';
+    pill.title=e.message;
+  }
+}
+
+/* ============ 6. LOCAL AGENT (fallback intent router) ============ */
+const SCRIPTS=[
+  {label:'Plan', text:'I have tofu and beef. Plan three dinners under 45 minutes.',
+   steps:[['search_dishes',{maxMinutes:45,limit:4}],
+          ['plan_week',{dishes:['Mapo Tofu','Chicken Fried Rice','Steamed Sea Bass'],servings:2,replace:true}]]},
+  {label:'Explain', text:'Why is Sichuan peppercorn on my list?',
+   steps:[['explain_shortage',{item:'Sichuan peppercorn'}]]},
+  {label:'Merge', text:'Merge duplicates and show me the real cart.',
+   steps:[['optimize_cart',{}]]},
+  {label:'Diff', text:'Drop Mapo Tofu.',
+   steps:[['remove_dish',{dish:'Mapo Tofu'}]]},
+  {label:'Pay', text:'Check out.',
+   steps:[['checkout',{}]]}
+];
+
+function route(text){
+  const s=text.toLowerCase();
+  const dishHit=()=>{ for(const d of DISHES){ if(s.indexOf(d.n.toLowerCase())>=0||(d.cn&&text.indexOf(d.cn)>=0)) return d.n; } return null; };
+  if(/check ?out|place (the )?order|pay|下单|结账/.test(s)) return [['checkout',{}]];
+  if(/merge|dedup|optimi[sz]e|combine|real cart|合并/.test(s)) return [['optimize_cart',{}]];
+  if(/(remove|drop|delete|cancel|去掉|删)/.test(s)){ const d=dishHit(); if(d) return [['remove_dish',{dish:d}]]; }
+  if(/^why|why is|explain|为什么/.test(s)){
+    const m=s.replace(/^.*?(why is|why do i need|explain|为什么)\s*/,'').replace(/[?？.]/g,'').replace(/ on my list| in the cart/,'');
+    return [['explain_shortage',{item:m.trim()}]];
+  }
+  if(/what.*(have|kitchen)|my kitchen|库存/.test(s)) return [['get_kitchen',{}]];
+  if(/i have |我有/.test(s)){
+    const raw=s.split(/i have |我有/)[1].split(/[.。,;]| plan | and cook /)[0];
+    const items=raw.split(/,| and |、/).map(x=>x.trim()).filter(Boolean);
+    return [['add_to_kitchen',{items:items.map(i=>({item:i}))}]];
+  }
+  const mm=s.match(/under (\d+)|(\d+)\s*min|少于\s*(\d+)/);
+  const maxMinutes=mm?Number(mm[1]||mm[2]||mm[3]):null;
+  const nm=s.match(/(\d+)\s*(dinner|dish|meal|菜|顿)/); const n=nm?Number(nm[1]):3;
+  const cuisine=['sichuan','cantonese','thai','italian'].find(c=>s.indexOf(c)>=0)||null;
+  const d=dishHit();
+  if(d && /add|plan|make|cook|做|加/.test(s)) return [['plan_week',{dishes:[d],servings:2}]];
+  const q={limit:Math.max(n,3)}; if(maxMinutes) q.maxMinutes=maxMinutes; if(cuisine) q.cuisine=cuisine;
+  return [['search_dishes',q], ['__planTop', {n:n, q:q}]];
+}
+
+async function runSteps(steps){
+  for(const [name,args] of steps){
+    if(name==='__planTop'){
+      const r=TOOL_BY_NAME.search_dishes.run(args.q);
+      const picks=r.matches.slice(0,args.n).map(m=>m.dish);
+      if(picks.length) await invoke('plan_week',{dishes:picks,servings:2,replace:true},'agent');
+      continue;
+    }
+    await invoke(name,args,'agent');
+    await sleep(340);
+  }
+  logCompare(steps.length);
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ============ 7. LOG ============ */
+const logEl=document.getElementById('log');
+function compact(o){
+  const s=JSON.stringify(o);
+  return s.length>110 ? s.slice(0,108)+'…}' : s;
+}
+function logRow(kind,text,source,ms){
+  const row=document.createElement('div');
+  row.className='row '+kind;
+  const span=document.createElement('span');
+  span.textContent=text;
+  row.appendChild(span);
+  if(ms!=null){ const m=document.createElement('span'); m.className='ms'; m.textContent=ms+'ms'; row.appendChild(m); }
+  logEl.appendChild(row);
+  logEl.scrollTop=logEl.scrollHeight;
+}
+function logCompare(nCalls){
+  const t=computeTree();
+  const est = S.week.length*3 + t.items.length + 6;
+  const row=document.createElement('div');
+  row.className='row cmp';
+  row.textContent='   ↳ '+nCalls+' tool call(s) · a click-agent needs ≈'+est+' actions + '+(nCalls+1)+' full-page reads (estimated)';
+  logEl.appendChild(row); logEl.scrollTop=logEl.scrollHeight;
+}
+
+/* ============ 8. CONFIRM / RECEIPT ============ */
+function confirmSheet(cart){
+  return new Promise(resolve=>{
+    const scrim=document.createElement('div'); scrim.className='scrim';
+    scrim.innerHTML =
+      '<div class="modal" role="dialog" aria-modal="true">'+
+        '<div class="mh">'+
+          '<div class="badge">Human confirmation required</div>'+
+          '<h3>Meridian Market — demo store</h3>'+
+          '<p>Requested by an agent via <code>checkout()</code>. Review before it goes through.</p>'+
+        '</div>'+
+        '<div class="mb">'+
+          cart.lines.map(l=>'<div class="mrow"><span>'+l.name+' <span class="q">'+l.packs+'× '+l.packLabel+'</span></span><span class="p">'+money(l.price)+'</span></div>').join('')+
+          '<div class="mdiv"></div>'+
+          '<div class="mrow"><span><b>Total</b></span><span class="p"><b>'+money(cart.total)+'</b></span></div>'+
+          '<div class="mrow"><span style="color:var(--muted)">Delivery</span><span style="color:var(--muted)">Tomorrow, 8–10am</span></div>'+
+          '<div style="height:12px"></div>'+
+          '<div class="mcard">'+ic('bottle',16)+'<span class="num">•••• •••• •••• 4242</span><span class="tag">demo card</span></div>'+
+          '<div class="mnote">The agent never receives the card number, the billing address, or the session cookie. If you confirm, its tool result is <code>{orderId, total, "•••• 4242"}</code> — a receipt, not credentials.</div>'+
+        '</div>'+
+        '<div class="mf">'+
+          '<button class="btn" data-a="0">Cancel</button>'+
+          '<button class="btn primary" data-a="1">Confirm '+money(cart.total)+'</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(scrim);
+    scrim.addEventListener('click',e=>{
+      const b=e.target.closest('[data-a]'); if(!b) return;
+      scrim.remove(); resolve(b.dataset.a==='1');
+    });
+  });
+}
+function showReceipt(orderId,total){
+  const scrim=document.createElement('div'); scrim.className='scrim';
+  scrim.innerHTML='<div class="modal"><div class="receipt">'+
+    '<div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
+    '<h3>Order placed — '+money(total)+'</h3>'+
+    '<p>Meridian Market · arriving tomorrow 8–10am</p>'+
+    '<div class="oid">'+orderId+' · paid with •••• 4242</div>'+
+    '</div><div class="mf"><button class="btn wide" data-c="1">Done</button></div></div>';
+  document.body.appendChild(scrim);
+  scrim.addEventListener('click',e=>{ if(e.target.closest('[data-c]')) scrim.remove(); });
+}
+
+/* ============ 9. RENDER ============ */
+const $=id=>document.getElementById(id);
+
+function renderKitchen(){
+  const box=$('kitchenBody'); const groups={ingredient:[],seasoning:[],cookware:[]};
+  for(const k in S.kitchen){ const c=CATALOG[k]; if(c&&S.kitchen[k]>0) groups[c.cat].push(k); }
+  $('kCount').textContent=groups.ingredient.length+groups.seasoning.length+groups.cookware.length;
+  const titles={ingredient:'Ingredients',seasoning:'Seasonings',cookware:'Cookware'};
+  box.innerHTML=['ingredient','seasoning','cookware'].map(cat=>{
+    const list=groups[cat].sort((a,b)=>CATALOG[a].n.localeCompare(CATALOG[b].n));
+    return '<div class="kgroup"><h4>'+titles[cat]+' <span>'+list.length+'</span></h4>'+
+      (list.length?list.map(k=>'<div class="kitem"><span class="ic">'+ic(CATALOG[k].icon,15)+'</span>'+
+        '<span class="nm">'+CATALOG[k].n+'</span>'+
+        '<span class="qt">'+(cat==='cookware'?'✓':qty(S.kitchen[k],CATALOG[k].u))+'</span></div>').join('')
+       :'<div class="empty">nothing yet</div>')+'</div>';
+  }).join('');
+}
+
+function renderMenu(){
+  const m=$('menu');
+  $('wCount').textContent=S.week.length+(S.week.length===1?' dish':' dishes');
+  m.innerHTML=DISHES.map(d=>{
+    const on=S.week.indexOf(d.id)>=0;
+    const keys=Object.keys(d.need);
+    const miss=keys.filter(k=>(S.kitchen[k]||0)<d.need[k]).length;
+    const cu=CUISINE[d.cuisine];
+    return '<button class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'">'+
+      '<span class="bar" style="background:'+cu.c+'"></span>'+
+      '<span class="top"><span class="glyph" style="background:'+cu.c+'">'+ic(d.glyph,14)+'</span>'+
+      '<span><span class="nm">'+d.n+'</span><span class="cn">'+d.cn+'</span></span></span>'+
+      '<span class="meta">'+d.min+'m · '+(miss?'<span class="miss">'+miss+' short</span>':'<span class="ok">all set</span>')+'</span>'+
+    '</button>';
+  }).join('');
+}
+
+let prevItemIds=[];
+function renderTree(){
+  const host=$('treeScroll'); const t=computeTree();
+  if(!S.week.length){
+    host.innerHTML='<div class="tree-empty"><b>No dishes planned</b>Pick dishes above, or ask the agent below. The tree shows every ingredient, who needs it, and what you are short.</div>';
+    prevItemIds=[]; return;
+  }
+  const shortItems=t.items.filter(i=>i.short>0);
+  const haveItems=t.items.filter(i=>i.short<=0);
+  const nodeItem=i=>{
+    const fresh = prevItemIds.indexOf(i.id)<0 ? ' enter':'';
+    const cls = i.short>0 ? 'short':'have';
+    const pulse = i.short>0 && i.from.length>1 ? ' pulse':'';
+    return '<button class="tnode item '+cls+fresh+pulse+'" data-item="'+i.id+'">'+
+      '<span class="ic">'+ic(i.icon,14)+'</span>'+
+      '<span class="nm">'+i.name+'</span>'+
+      '<span class="qt">'+(i.short>0?('need '+qty(i.short,i.unit)):qty(i.req,i.unit))+'</span></button>';
+  };
+  host.innerHTML=
+    '<div class="tree" id="tree">'+
+      '<svg class="edges" id="edges"></svg>'+
+      '<div class="tcol" id="colDish"><div class="tlabel">This week</div>'+
+        S.week.map(id=>{ const d=DISH_BY_ID[id]; const cu=CUISINE[d.cuisine];
+          return '<button class="tnode dish" data-node="'+d.id+'">'+
+            '<span class="glyph" style="background:'+cu.c+'">'+ic(d.glyph,12)+'</span>'+
+            '<span class="nm">'+d.n+'</span><span class="qt">'+d.min+'m</span></button>';
+        }).join('')+
+      '</div>'+
+      '<div class="tcol mid"></div>'+
+      '<div class="tcol" id="colItem">'+
+        (shortItems.length?'<div class="tlabel short">Short — '+shortItems.length+'</div>'+shortItems.map(nodeItem).join(''):'')+
+        (haveItems.length?'<div class="tlabel" style="margin-top:'+(shortItems.length?'10px':'0')+'">In your kitchen — '+haveItems.length+'</div>'+haveItems.map(nodeItem).join(''):'')+
+      '</div>'+
+    '</div>';
+  prevItemIds=t.items.map(i=>i.id);
+  requestAnimationFrame(drawEdges);
+}
+
+function drawEdges(){
+  const tree=$('tree'), svg=$('edges'); if(!tree||!svg) return;
+  const R=tree.getBoundingClientRect();
+  svg.setAttribute('viewBox','0 0 '+R.width+' '+R.height);
+  svg.setAttribute('width',R.width); svg.setAttribute('height',R.height);
+  const pos=el=>{const b=el.getBoundingClientRect();return {x1:b.left-R.left,x2:b.right-R.left,y:b.top-R.top+b.height/2};};
+  const dishEls={}, itemEls={};
+  tree.querySelectorAll('[data-node]').forEach(e=>dishEls[e.dataset.node]=pos(e));
+  tree.querySelectorAll('[data-item]').forEach(e=>itemEls[e.dataset.item]=pos(e));
+  const t=computeTree(); let paths='';
+  if(S.focus && !itemEls[S.focus] && !dishEls[S.focus]) S.focus=null;
+  t.items.forEach(i=>{
+    const ip=itemEls[i.id]; if(!ip) return;
+    i.from.forEach(dz=>{
+      const dp=dishEls[dz]; if(!dp) return;
+      const x1=dp.x2, x2=ip.x1, mx=(x1+x2)/2;
+      const active = !S.focus || S.focus===i.id || S.focus===dz;
+      const col = i.short>0 ? 'var(--short)' : 'var(--have)';
+      paths+='<path d="M'+x1+' '+dp.y+' C'+mx+' '+dp.y+' '+mx+' '+ip.y+' '+x2+' '+ip.y+'" fill="none" stroke="'+col+'" stroke-width="'+(active&&S.focus?1.6:1)+'" opacity="'+(active?(S.focus?0.75:0.3):0.06)+'"/>';
+    });
+  });
+  svg.innerHTML=paths;
+  // dim non-focused nodes
+  tree.querySelectorAll('.tnode').forEach(el=>{
+    el.classList.remove('dim','hi');
+    if(!S.focus) return;
+    const id=el.dataset.item||el.dataset.node;
+    const row=t.items.find(x=>x.id===S.focus);
+    const related = id===S.focus || (row && (row.from.indexOf(id)>=0)) ||
+      (DISH_BY_ID[S.focus] && DISH_BY_ID[S.focus].need[id]!=null);
+    if(id===S.focus) el.classList.add('hi'); else if(!related) el.classList.add('dim');
+  });
+}
+
+function renderCart(){
+  const c=computeCart(); const box=$('cartBody');
+  $('cCount').textContent=c.lines.length;
+  $('total').textContent=money(c.total);
+  $('checkoutBtn').disabled=!c.lines.length;
+  let html='';
+  if(S.lastDiff){
+    const d=S.lastDiff.d;
+    const bits=[];
+    d.removed.forEach(x=>bits.push('<li><b>−</b>'+x+'</li>'));
+    d.reduced.forEach(x=>bits.push('<li><b>↓</b>'+x+'</li>'));
+    d.increased.forEach(x=>bits.push('<li><b>↑</b>'+x+'</li>'));
+    d.added.forEach(x=>bits.push('<li><b>+</b>'+x+'</li>'));
+    if(bits.length) html+='<div class="diff"><h5>'+S.lastDiff.title+' → diff</h5><ul>'+bits.slice(0,7).join('')+
+      '</ul><div style="margin-top:6px;font-family:var(--mono);font-size:11px">total '+(d.delta>=0?'+':'')+money(d.delta)+'</div></div>';
+  }
+  if(c.gearMissing.length){
+    html+='<div class="kitcheck">'+ic('steam',14)+'<div><b>Kit check</b><br>You don’t own: '+
+      c.gearMissing.map(g=>CATALOG[g].n).join(', ')+'. Not added to the cart.</div></div>';
+  }
+  if(S.lastExplain){
+    const x=S.lastExplain;
+    html+='<div class="diff" style="border-color:color-mix(in srgb,var(--short) 34%,var(--border));background:var(--short-soft)">'+
+      '<h5 style="color:var(--short)">explain_shortage → '+x.item+'</h5>'+
+      '<ul><li><b>need</b>'+x.required+' · have '+x.inKitchen+(x.short!=='0g'?' · short '+x.short:'')+'</li>'+
+      '<li><b>for</b>'+x.neededBy.join(', ')+'</li>'+
+      (x.buy?'<li><b>buy</b>'+x.buy+'</li>':'')+'</ul>'+
+      (x.substitutes.length?'<div style="margin-top:6px;font-size:11.5px;color:var(--muted);line-height:1.45">'+
+        '<b style="color:var(--text)">Substitutes</b><br>'+x.substitutes.map(sb=>'· '+sb).join('<br>')+'</div>':'')+
+      '</div>';
+  }
+  if(S.optimized){
+    html+='<div class="stat"><div><div class="k">Ingredient asks</div><div class="v">'+c.tree.rawRequests+
+      ' <small>across '+S.week.length+' dishes</small></div></div>'+
+      '<div><div class="k">Things to buy</div><div class="v">'+c.mergedLines+' <small>items</small></div></div></div>';
+  }
+  html+= c.lines.length ? c.lines.map(l=>
+    '<div class="line" data-line="'+l.id+'"><span class="ic">'+ic(l.icon,16)+'</span>'+
+    '<div class="body"><div class="nm">'+l.name+'</div>'+
+    '<div class="sub">'+l.packs+'× '+l.packLabel+' · '+l.from.length+' dish'+(l.from.length>1?'es':'')+'</div></div>'+
+    '<span class="pr">'+money(l.price)+'</span></div>').join('')
+    : '<div class="empty">Nothing to buy yet.</div>';
+  box.innerHTML=html;
+}
+
+function render(){ renderKitchen(); renderMenu(); renderTree(); renderCart(); }
+
+/* ============ 10. EVENTS ============ */
+$('menu').addEventListener('click',e=>{
+  const b=e.target.closest('[data-dish]'); if(!b) return;
+  const id=b.dataset.dish;
+  if(S.week.indexOf(id)>=0) invoke('remove_dish',{dish:id},'ui');
+  else invoke('plan_week',{dishes:[id]},'ui');
+});
+$('treeScroll').addEventListener('click',e=>{
+  const it=e.target.closest('[data-item]');
+  if(it){ invoke('explain_shortage',{item:it.dataset.item},'ui'); return; }
+  const dn=e.target.closest('[data-node]');
+  if(dn){ S.focus = S.focus===dn.dataset.node?null:dn.dataset.node; drawEdges(); }
+});
+$('treeScroll').addEventListener('mouseover',e=>{
+  const it=e.target.closest('[data-item]'); if(!it) return;
+  const t=computeTree(); const row=t.items.find(x=>x.id===it.dataset.item); if(!row) return;
+  const tip=$('tip'); const b=it.getBoundingClientRect();
+  tip.innerHTML='<b>'+row.name+'</b><br>need '+qty(row.req,row.unit)+' · have '+qty(row.have,row.unit)+
+    (row.short>0?'<br>short '+qty(row.short,row.unit):'')+
+    '<br>for: '+row.from.map(f=>DISH_BY_ID[f].n).join(', ');
+  tip.style.left=Math.min(window.innerWidth-260,b.left-256)+'px';
+  tip.style.top=b.top+'px'; tip.classList.add('on');
+});
+$('treeScroll').addEventListener('mouseout',()=>$('tip').classList.remove('on'));
+$('cartBody').addEventListener('click',e=>{
+  const l=e.target.closest('[data-line]'); if(l) invoke('explain_shortage',{item:l.dataset.line},'ui');
+});
+$('checkoutBtn').addEventListener('click',()=>invoke('checkout',{},'ui'));
+$('addBtn').addEventListener('click',()=>{
+  const v=$('addName').value.trim(); if(!v) return;
+  invoke('add_to_kitchen',{items:[{item:v}]},'ui'); $('addName').value='';
+});
+$('addName').addEventListener('keydown',e=>{ if(e.key==='Enter') $('addBtn').click(); });
+$('demoBtn').addEventListener('click',()=>{
+  S.kitchen=Object.assign({},DEMO_KITCHEN);
+  logRow('usr','$ load demo kitchen'); render();
+});
+$('send').addEventListener('click',()=>{
+  const v=$('prompt').value.trim(); if(!v) return;
+  $('prompt').value=''; logRow('usr','› '+v); runSteps(route(v));
+});
+$('prompt').addEventListener('keydown',e=>{ if(e.key==='Enter') $('send').click(); });
+$('clearLog').addEventListener('click',()=>logEl.innerHTML='');
+$('toggleConsole').addEventListener('click',e=>{
+  const c=$('console'); c.classList.toggle('collapsed');
+  e.target.textContent=c.classList.contains('collapsed')?'expand':'collapse';
+  setTimeout(drawEdges,260);
+});
+$('modeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('[data-mode]'); if(!b) return;
+  S.mode=b.dataset.mode;
+  [...$('modeSeg').children].forEach(x=>x.setAttribute('aria-pressed', x===b?'true':'false'));
+  const on=S.mode==='agent';
+  $('prompt').disabled=!on; $('send').disabled=!on;
+  $('prompt').placeholder = on ? 'Tell the agent what you want to cook…' : 'Manual mode — click the UI; every click still goes through the same tools';
+});
+$('themeBtn').addEventListener('click',()=>{
+  const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme', d?'light':'dark');
+  setTimeout(drawEdges,60);
+});
+new ResizeObserver(()=>drawEdges()).observe(document.body);
+
+$('chips').innerHTML=SCRIPTS.map((s,i)=>'<button class="chip" data-s="'+i+'"><b>'+s.label+'</b>'+s.text+'</button>').join('');
+$('chips').addEventListener('click',e=>{
+  const b=e.target.closest('[data-s]'); if(!b) return;
+  const s=SCRIPTS[+b.dataset.s];
+  logRow('usr','› '+s.text);
+  runSteps(s.steps);
+});
+
+/* ============ BOOT ============ */
+$('toolCount').textContent=TOOLS.length+' tools registered';
+S.kitchen=Object.assign({},DEMO_KITCHEN);
+registerWebMCP();
+render();
+logRow('res','ready · '+TOOLS.length+' tools · try a demo script →');
+</script>
+</body>
+</html>
