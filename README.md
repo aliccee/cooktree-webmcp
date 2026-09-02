@@ -8,7 +8,7 @@ pixels. Every dish you click and every sentence you type goes through the *same*
 tool definitions.
 
 The core app is a single HTML file with no dependencies or build step. Most tools run entirely
-in the browser; two small Vercel Functions keep the OpenRouter and retailer keys server-side.
+in the browser; two small Vercel Functions call OpenRouter and Shopify without exposing secrets.
 
 **Live demo → https://cooktree-webmcp.vercel.app/**
 
@@ -87,21 +87,25 @@ convenience.
 
 The site renders its **own** confirmation sheet. The agent is blocked — the console shows
 `⏸ awaiting human confirmation` — until a person clicks. CookTree then sends only product
-names and quantities to the Instacart Developer Platform, which returns a shopping-list URL:
+names, quantities, and an optional ZIP code to Shopify's Global Catalog. It searches live
+listings, prefers the merchant that covers the most ingredients, and returns one or more
+merchant-owned cart links:
 
 ```json
 {
   "orderId": "CT-K3M9Q2",
   "status": "awaiting_user_checkout",
-  "provider": "Instacart",
-  "shoppingUrl": "https://www.instacart.com/..."
+  "provider": "Shopify Global Catalog",
+  "items": 6,
+  "groups": [{ "sellerName": "Example Market", "shoppingUrl": "https://.../cart/..." }]
 }
 ```
 
-A handoff, not credentials. The user chooses a nearby store, reviews matched real products
-and current prices, and completes payment on the retailer page. CookTree never receives the
-card number, delivery address, or retailer session. Confirming inside CookTree does not charge
-the user.
+A handoff, not credentials. The user reviews matched real products, current prices, shipping,
+and taxes before completing payment on each Shopify merchant page. CookTree never receives the
+card number, full delivery address, or retailer session. The optional ZIP only filters products
+that can ship to the area; it is not a claim that a physical store is nearby. Confirming inside
+CookTree does not charge the user.
 
 **This is the argument.** WebMCP's value isn't that it's faster than clicking. It's that the
 site keeps its secrets and defines its own permission boundary, in code, instead of hoping a
@@ -129,13 +133,18 @@ on the retailer page.
 | `add_gear_to_cart` | Add missing cookware to the computed list | a draft gets messy |
 | `explain_shortage` | Why is this on my list, who needs it, substitutes | nothing happens |
 | `get_order_status` | Status of the retailer handoff **this agent created** | nothing happens |
-| `generate_dish` | Free text → a real dish (ingredients, qty, cook time) via OpenRouter's `deepseek/deepseek-v4-flash-0731:nitro`, merged into the same engine as the built-in 8 | a few extra catalog rows |
+| `generate_dish` | Free text → a real dish via DeepSeek plus a matching dish image via Nano Banana 2 Lite, merged into the same engine as the built-in 8 | a few extra catalog rows |
 | `checkout` | **Human-gated.** Creates a real-product shopping list; payment stays at the retailer | an external list is created |
 
 `generate_dish` calls `/api/generate-dish`; `checkout` calls `/api/create-shopping-list`.
-Both are Vercel Functions that hold provider keys server-side (see `DEPLOY.md`) — the browser
-and git repo never see them. On plain static hosting with no `/api` routes, the client-only tools
+Both are Vercel Functions (see `DEPLOY.md`); only dish generation needs a provider key, which
+the browser and git repo never see. On plain static hosting with no `/api` routes, the client-only tools
 still work and the two networked tools return clear configuration errors.
+
+Recipe structure and imagery are generated in parallel through the same OpenRouter key. The JSON
+recipe uses `deepseek/deepseek-v4-flash-0731:nitro`; the food photo uses
+`google/gemini-3.1-flash-lite-image` (Nano Banana 2 Lite). If image generation is unavailable,
+the recipe still succeeds and its card falls back to the existing dish glyph.
 
 ### How the set was chosen
 
@@ -197,7 +206,7 @@ Eight preset prompts live in the console sidebar. In order:
 3. *"Drop Mapo Tofu."* — the diff, in one call
 4. *"I used up the garlic."* — inventory shrinks, the buy list grows to match
 5. *"Change my delivery address to 42 Mission St."* — **refused; the account row lights up**
-6. *"Check out."* — human review, then a shopping list matched to real retailer products
+6. *"Check out."* — human review, then live Shopify products grouped into merchant carts
 7. *"Where is my order?"* — answered for this tab's handoff only; retailer history stays out of scope
 
 ## Screenshots
@@ -208,8 +217,9 @@ Eight preset prompts live in the console sidebar. In order:
 
 ## Notes
 
-- Instacart performs the real product/store matching. A development key creates test integration
-  links; live commerce requires an approved production key.
+- Shopify Global Catalog performs live cross-merchant product matching without an API key.
+  Products can be filtered by delivery ZIP, but the catalog does not prove physical proximity.
+- CookTree prefers a single merchant and clearly separates carts when no store covers the full list.
 - Pack sizes and prices in `CATALOG[*].pack` are planning estimates. The retailer page is the
   source of truth for current product availability and prices.
 - Data (`§1`), engine (`§3`), tools (`§4`), registration (`§5`), agent (`§6`), render (`§9`).

@@ -139,12 +139,11 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .btn.wide{width:100%;height:38px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 a.btn{text-decoration:none}
-.instacart-cta{
-  height:46px;border:0;border-radius:29.5px;background:#003D29;color:#FAF1E5;
-  padding:0 18px;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none
+.shopify-cta{
+  height:38px;background:#008060;color:#fff;border-color:#008060;
+  padding:0 15px;font-size:11px;font-weight:700
 }
-.instacart-cta:hover{background:#003D29;color:#FAF1E5;border-color:#003D29;filter:brightness(1.08)}
-.instacart-cta img{width:22px;height:22px;display:block;object-fit:contain}
+.shopify-cta:hover{background:#006e52;color:#fff;border-color:#006e52}
 
 /* Identity tint — what kind of food this is. Deliberately desaturated, and
    always outranked by the red "you are short" state (higher specificity). */
@@ -403,7 +402,20 @@ a.btn{text-decoration:none}
 }
 .modal .mf{padding:12px 18px 16px;display:flex;gap:8px;border-top:1px solid var(--border)}
 .modal .mf .btn{flex:1;height:38px}
-.modal .mf .instacart-cta{height:46px}
+.postal-field{margin:12px 0 0}
+.postal-field label{display:block;font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.postal-field input{width:100%;height:38px;padding:0 11px;border:1px solid var(--border-2);background:var(--surface);color:var(--text);font:13px var(--mono)}
+.store-list{display:grid;gap:10px;margin-top:14px;text-align:left}
+.store-card{border:1px solid var(--border);padding:12px;background:var(--surface-2)}
+.store-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.store-head b{font-family:var(--serif);font-size:16px;font-weight:600}
+.store-head .tag{font:700 9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#008060}
+.store-items{margin:0 0 10px;padding:0;list-style:none;font-size:11.5px;color:var(--muted);line-height:1.5}
+.store-items li{display:flex;justify-content:space-between;gap:10px}
+.store-items span:first-child{flex:1;min-width:0;padding-right:6px;overflow-wrap:anywhere}
+.store-items span:last-child{flex:none;font-family:var(--mono);white-space:nowrap}
+.store-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.store-foot small{color:var(--faint);font-family:var(--mono)}
 .receipt{text-align:center;padding:26px 20px}
 .receipt .ok{width:46px;height:46px;border-radius:0;border:1px solid var(--red);color:var(--red);display:grid;place-items:center;margin:0 auto 14px}
 .receipt h3{margin:0 0 6px;font-family:var(--serif);font-size:21px;font-weight:500}
@@ -653,7 +665,6 @@ const S = {
   lastDiff:null,
   lastExplain:null,
   orders:[],           // retailer handoffs created THROUGH this agent, this session
-  shoppingLinkCache:null,
   focus:null,          // hovered/selected node key
   mode:'agent',
   mcp:false
@@ -730,6 +741,10 @@ function diffSnap(a,b){
   return {removed, reduced, added, increased, delta:Math.round((b.total-a.total)*100)/100};
 }
 const money = v => (v<0?'-$':'$')+Math.abs(v).toFixed(2);
+const moneyMinor = (v,currency='USD') => new Intl.NumberFormat('en-US',{style:'currency',currency}).format((Number(v)||0)/100);
+const escapeHTML = v => String(v==null?'':v).replace(/[&<>'"]/g,ch=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+}[ch]));
 const qty = (v,u)=> u==='pc' ? (Math.round(v*10)/10)+'' : (v>=1000? (v/1000).toFixed(1)+(u==='ml'?'L':'kg') : (Math.round(v*10)/10)+u);
 
 /* ============ 4. TOOLS — the single layer ============ */
@@ -743,15 +758,12 @@ const qty = (v,u)=> u==='pc' ? (Math.round(v*10)/10)+'' : (v>=1000? (v/1000).toF
 const GENERATE_DISH_URL = '/api/generate-dish';
 const CREATE_SHOPPING_LIST_URL = '/api/create-shopping-list';
 
-function shoppingSignature(cart){
-  return JSON.stringify(cart.lines.map(l=>[l.id,l.short,l.unit,l.packs,l.packLabel]));
-}
 function shoppingLineItems(cart){
   return cart.lines.map(l=>({
+    id:l.id,
     name:l.name,
-    quantity:l.unit==='pc' ? Math.max(1,l.short) : l.short,
-    unit:l.unit,
-    displayText:l.name+' · '+qty(l.short,l.unit)
+    quantity:Math.max(1,l.packs),
+    displayText:l.packs+' × '+l.packLabel
   }));
 }
 
@@ -772,7 +784,8 @@ function mergeGeneratedDish(dish){
     need[id]=(need[id]||0)+it.qty;
   });
   const d={id:dish.id, n:dish.name, cn:dish.cn||'', cuisine:dish.cuisine,
-    min:dish.min, glyph:dish.glyph, serves:dish.serves, gear:dish.gear, need, generated:true};
+    min:dish.min, glyph:dish.glyph, serves:dish.serves, gear:dish.gear, need,
+    image:dish.image||'', generated:true};
   DISHES.push(d); DISH_BY_ID[d.id]=d;
   return {dish:d, newIngredients};
 }
@@ -939,12 +952,12 @@ const TOOLS = [
 },
 {
   name:'get_order_status',
-  description:'Get the status of a retailer checkout handoff created by this agent in this tab. It cannot read the user’s Instacart order history or payment account.',
+  description:'Get the status of a Shopify cart handoff created by this agent in this tab. It cannot read merchant order history or payment accounts.',
   inputSchema:{type:'object',properties:{orderId:{type:'string'}}},
   run(a){
     if(!S.orders.length){
       return {orders:[], note:'No retailer checkout handoff has been created through this agent yet. '+
-        'Instacart order history is outside CookTree and is not exposed as a tool.'};
+        'Merchant order history is outside CookTree and is not exposed as a tool.'};
     }
     const o = a.orderId ? S.orders.find(x=>x.orderId===a.orderId) : S.orders[S.orders.length-1];
     if(!o) return {error:'not an order from this session: '+a.orderId};
@@ -955,50 +968,47 @@ const TOOLS = [
 },
 {
   name:'checkout',
-  description:'After an in-page human review, create an Instacart shopping list that matches the plan to real products at nearby stores. The user chooses the store, reviews live prices, and completes payment on Instacart; CookTree never receives retailer credentials or card details.',
+  description:'After an in-page human review, match the plan to live Shopify products that ship to the user’s area. Prefer one merchant, split carts only when needed, and leave final product review and payment on each merchant site.',
   inputSchema:{type:'object',properties:{note:{type:'string'}}},
   async run(a, ctx){
     const c=computeCart();
     if(!c.lines.length) return {error:'cart is empty'};
     ctx && ctx.log('wait','⏸ awaiting human confirmation — real retailer handoff, agent is blocked');
-    const ok = await confirmSheet(c);
-    if(!ok) return {status:'declined_by_user', estimatedTotal:c.total};
+    const confirmation = await confirmSheet(c);
+    if(!confirmation.confirmed) return {status:'declined_by_user', estimatedTotal:c.total};
 
-    const signature=shoppingSignature(c);
-    let link=S.shoppingLinkCache && S.shoppingLinkCache.signature===signature ? S.shoppingLinkCache.result : null;
-    if(!link){
-      ctx && ctx.log('wait','↗ asking Instacart to match '+c.lines.length+' real products');
-      let response;
-      try{
-        response=await fetch(CREATE_SHOPPING_LIST_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            title:'CookTree · '+S.week.map(id=>DISH_BY_ID[id].n).join(', '),
-            lineItems:shoppingLineItems(c)
-          })});
-      }catch(e){
-        const error='could not reach /api/create-shopping-list: '+e.message;
-        showCheckoutError(error); return {error};
-      }
-      let body;
-      try{ body=await response.json(); }catch(e){ body={error:'retailer returned a non-JSON response'}; }
-      if(!response.ok || body.error){
-        const error=body.error||('retailer server error '+response.status);
-        showCheckoutError(error); return {error,code:body.code};
-      }
-      link=body;
-      S.shoppingLinkCache={signature,result:link};
+    ctx && ctx.log('wait','↗ searching Shopify for '+c.lines.length+' live products');
+    let response;
+    try{
+      response=await fetch(CREATE_SHOPPING_LIST_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          title:'CookTree · '+S.week.map(id=>DISH_BY_ID[id].n).join(', '),
+          postalCode:confirmation.postalCode,
+          lineItems:shoppingLineItems(c)
+        })});
+    }catch(e){
+      const error='could not reach /api/create-shopping-list: '+e.message;
+      showCheckoutError(error); return {error};
+    }
+    let body;
+    try{ body=await response.json(); }catch(e){ body={error:'retailer returned a non-JSON response'}; }
+    if(!response.ok || body.error){
+      const error=body.error||('retailer server error '+response.status);
+      showCheckoutError(error); return {error,code:body.code};
     }
 
     const orderId='CT-'+Math.random().toString(36).slice(2,8).toUpperCase();
-    const order={orderId,provider:link.provider||'Instacart',items:c.lines.length,
-      estimatedTotal:c.total,status:'awaiting_user_checkout',shoppingUrl:link.shoppingUrl,
-      environment:link.environment||'development',nextStep:'User selects a nearby store, reviews matched products and live prices, then pays on Instacart.'};
+    const order={orderId,provider:body.provider||'Shopify Global Catalog',items:body.matchedItemCount,
+      requestedItems:body.requestedItemCount,estimatedTotal:c.total,liveTotalAmount:body.liveTotalAmount,
+      currency:body.currency||'USD',postalCode:body.postalCode,groups:body.groups||[],
+      unmatched:body.unmatched||[],warnings:body.warnings||[],status:'awaiting_user_checkout',
+      nextStep:'User reviews each merchant cart, shipping, taxes, and final availability, then pays on Shopify.'};
     S.orders.push(order);
     showShoppingHandoff(order);
     return order;
   },
   summary:r=>r.error?r.error:(r.status==='awaiting_user_checkout'?
-    ('real product list ready · '+r.items+' items · '+money(r.estimatedTotal)+' estimated · human completes on Instacart'):r.status)
+    ('Shopify carts ready · '+r.items+'/'+r.requestedItems+' matched · '+r.groups.length+' merchant cart'+(r.groups.length===1?'':'s')+' · human completes checkout'):r.status)
 },
 {
   name:'generate_dish',
@@ -1018,9 +1028,11 @@ const TOOLS = [
     if(!res.ok || body.error) return {error:body.error||('server error '+res.status)};
     const {dish, newIngredients} = mergeGeneratedDish(body.dish);
     return {added:dish.n, cuisine:dish.cuisine, minutes:dish.min,
-      ingredients:dish.need ? Object.keys(dish.need).length : 0, newIngredients};
+      ingredients:dish.need ? Object.keys(dish.need).length : 0,
+      image:body.image&&body.image.status||'unavailable', newIngredients};
   },
   summary:r=>r.error?r.error:('added "'+r.added+'" · '+r.minutes+' min · '+r.ingredients+' ingredients'+
+    ' · image '+r.image+
     (r.newIngredients.length?' · '+r.newIngredients.length+' new to catalog':''))
 }
 ];
@@ -1246,17 +1258,18 @@ function confirmSheet(cart){
       '<div class="modal" role="dialog" aria-modal="true">'+
         '<div class="mh">'+
           '<div class="badge">Human confirmation required</div>'+
-          '<h3>Send this list to Instacart?</h3>'+
-          '<p>Requested by an agent via <code>checkout()</code>. Review every item before the retailer handoff.</p>'+
+          '<h3>Find these products on Shopify?</h3>'+
+          '<p>Requested by an agent via <code>checkout()</code>. Review the list before a live catalog search.</p>'+
         '</div>'+
         '<div class="mb">'+
           cart.lines.map(l=>'<div class="mrow"><span>'+l.name+' <span class="q">'+l.packs+'× '+l.packLabel+'</span></span><span class="p">'+money(l.price)+'</span></div>').join('')+
           '<div class="mdiv"></div>'+
           '<div class="mrow"><span><b>CookTree estimate</b></span><span class="p"><b>'+money(cart.total)+'</b></span></div>'+
-          '<div class="mrow"><span style="color:var(--muted)">Store</span><span style="color:var(--muted)">Choose a nearby retailer next</span></div>'+
+          '<div class="postal-field"><label for="shoppingPostalCode">Delivery ZIP · optional</label>'+
+            '<input id="shoppingPostalCode" inputmode="numeric" autocomplete="postal-code" maxlength="10" placeholder="e.g. 94107"></div>'+
           '<div style="height:12px"></div>'+
-          '<div class="mcard">'+ic('lock',16)+'<span class="num">Payment stays on Instacart</span><span class="tag">retailer-owned</span></div>'+
-          '<div class="mnote">Instacart matches these names and quantities to real products. Availability and current prices depend on the store you choose. Confirming creates a shopping link only — it does not charge you.</div>'+
+          '<div class="mcard">'+ic('lock',16)+'<span class="num">Payment stays on Shopify</span><span class="tag">merchant-owned</span></div>'+
+          '<div class="mnote">CookTree searches live Shopify listings and prefers one merchant when possible. A ZIP filters for products that can ship to the area; it does not prove that a physical store is nearby. Confirming does not charge you.</div>'+
         '</div>'+
         '<div class="mf">'+
           '<button class="btn" data-a="0">Cancel</button>'+
@@ -1266,28 +1279,38 @@ function confirmSheet(cart){
     document.body.appendChild(scrim);
     scrim.addEventListener('click',e=>{
       const b=e.target.closest('[data-a]'); if(!b) return;
-      scrim.remove(); resolve(b.dataset.a==='1');
+      const postalCode=(scrim.querySelector('#shoppingPostalCode').value||'').trim();
+      scrim.remove(); resolve({confirmed:b.dataset.a==='1',postalCode});
     });
   });
 }
 function showShoppingHandoff(order){
   const scrim=document.createElement('div'); scrim.className='scrim';
+  const groups=order.groups.map(group=>
+    '<div class="store-card"><div class="store-head"><b>'+escapeHTML(group.sellerName)+'</b>'+
+      (group.recommended?'<span class="tag">best coverage</span>':'')+'</div>'+
+      '<ul class="store-items">'+group.items.map(item=>'<li><span>'+escapeHTML(item.requestedName)+' → '+
+        escapeHTML(item.productTitle)+' × '+item.quantity+'</span><span>'+moneyMinor(item.totalAmount,item.currency)+'</span></li>').join('')+'</ul>'+
+      '<div class="store-foot"><small>'+group.itemCount+' item'+(group.itemCount===1?'':'s')+' · '+
+        moneyMinor(group.subtotalAmount,group.currency)+'</small>'+
+        '<a class="btn shopify-cta" href="'+escapeHTML(group.shoppingUrl)+'" target="_blank" rel="noopener noreferrer">Open Shopify cart</a></div></div>'
+  ).join('');
+  const unmatched=order.unmatched.length?'<div class="mnote">No live match: '+order.unmatched.map(escapeHTML).join(', ')+'. Keep these on your manual list.</div>':'';
   scrim.innerHTML='<div class="modal"><div class="receipt">'+
     '<div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
-    '<h3>Real product list ready</h3>'+
-    '<p>Choose a nearby store, check product matches and live prices, then complete payment on Instacart.</p>'+
-    '<div class="oid">'+order.orderId+' · '+order.items+' items · '+money(order.estimatedTotal)+' CookTree estimate'+
-      (order.environment==='production'?'':' · development integration')+'</div>'+
-    '</div><div class="mf"><button class="btn" data-c="1">Not now</button>'+
-    '<a class="btn instacart-cta" href="'+order.shoppingUrl+'" target="_blank" rel="noopener noreferrer">'+
-      '<img src="assets/instacart-carrot.svg" alt="">Shop on Instacart</a></div></div>';
+    '<h3>Live Shopify products ready</h3>'+
+    '<p>Review every match on the merchant site before paying. Shipping and taxes are confirmed there.</p>'+
+    '<div class="oid">'+escapeHTML(order.orderId)+' · '+order.items+'/'+order.requestedItems+' matched · '+
+      order.groups.length+' merchant cart'+(order.groups.length===1?'':'s')+' · '+moneyMinor(order.liveTotalAmount,order.currency)+' live subtotal</div>'+
+    '<div class="store-list">'+groups+'</div>'+unmatched+
+    '</div><div class="mf"><button class="btn wide" data-c="1">Done</button></div></div>';
   document.body.appendChild(scrim);
   scrim.addEventListener('click',e=>{ if(e.target.closest('[data-c]')) scrim.remove(); });
 }
 function showCheckoutError(message){
   const scrim=document.createElement('div'); scrim.className='scrim';
   scrim.innerHTML='<div class="modal"><div class="mh"><div class="badge">Retailer handoff unavailable</div>'+
-    '<h3>Could not create the Instacart list</h3><p>'+message+'</p></div>'+
+    '<h3>Could not find Shopify products</h3><p>'+escapeHTML(message)+'</p></div>'+
     '<div class="mb"><div class="mnote">No order was placed and nothing was charged. Your CookTree plan is unchanged.</div></div>'+
     '<div class="mf"><button class="btn wide" data-c="1">Back to plan</button></div></div>';
   document.body.appendChild(scrim);
@@ -1323,7 +1346,8 @@ function renderMenu(){
     const cu=CUISINE[d.cuisine]||{label:String(d.cuisine||'').toUpperCase()};
     return '<span class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'" role="button" tabindex="0">'+
       '<span class="shot"><span class="fb">'+ic(d.glyph,40)+'</span>'+
-        (d.generated?'':'<img src="dishes/'+d.id+'.jpg" alt="" loading="lazy" onerror="this.remove()">')+
+        (d.image?'<img src="'+escapeHTML(d.image)+'" alt="'+escapeHTML(d.n)+'" loading="lazy" onerror="this.remove()">':
+          (d.generated?'':'<img src="dishes/'+d.id+'.jpg" alt="" loading="lazy" onerror="this.remove()">'))+
       '</span>'+
       '<span class="pad">'+
         '<span class="cui">'+cu.label+(d.generated?' · AI':'')+'</span>'+

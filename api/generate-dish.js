@@ -40,8 +40,11 @@ Rules:
 - Return nothing but the JSON object.`;
 
 const MODEL = 'deepseek/deepseek-v4-flash-0731:nitro';
+const IMAGE_MODEL = 'google/gemini-3.1-flash-lite-image';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_IMAGE_URL = 'https://openrouter.ai/api/v1/images';
 const MAX_DESC_LEN = 300;
+const MAX_IMAGE_BASE64_LEN = 3_000_000;
 
 function num(v, lo, hi, dflt) {
   const n = Number(v);
@@ -117,6 +120,42 @@ function validateDish(raw) {
   };
 }
 
+async function generateDishImage(apiKey, description) {
+  const response = await fetch(OPENROUTER_IMAGE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://cooktree-webmcp.vercel.app',
+      'X-Title': 'CookTree',
+    },
+    body: JSON.stringify({
+      model: IMAGE_MODEL,
+      prompt: `Editorial overhead food photography of the finished dish: ${description}. ` +
+        'Appetizing home-cooked plating, soft natural window light, warm cream tabletop, ' +
+        'subtle shadows, realistic ingredients, centered composition, no people, no text, ' +
+        'no logos, no watermark, no border.',
+      resolution: '1K',
+      aspect_ratio: '4:3',
+      n: 1,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`image model returned ${response.status}`);
+  }
+  const data = await response.json();
+  const image = data && Array.isArray(data.data) && data.data[0];
+  const base64 = image && image.b64_json;
+  const mediaType = str(image && image.media_type, 40) || 'image/png';
+  if (!base64 || typeof base64 !== 'string' || base64.length > MAX_IMAGE_BASE64_LEN ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) ||
+      !['image/png', 'image/jpeg', 'image/webp'].includes(mediaType)) {
+    throw new Error('image model returned an invalid or oversized image');
+  }
+  return { dataUrl: `data:${mediaType};base64,${base64}`, model: IMAGE_MODEL };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -130,6 +169,11 @@ module.exports = async (req, res) => {
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'server missing OPENROUTER_API_KEY' }); return; }
+
+  const imagePromise = generateDishImage(apiKey, description).catch((error) => {
+    console.error('[generate-dish] optional image generation failed', { message: error.message });
+    return null;
+  });
 
   let upstream;
   try {
@@ -189,5 +233,13 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(200).json({ dish });
+  const generatedImage = await imagePromise;
+  if (generatedImage) dish.image = generatedImage.dataUrl;
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).json({
+    dish,
+    image: generatedImage
+      ? { status: 'generated', model: generatedImage.model }
+      : { status: 'unavailable', model: IMAGE_MODEL },
+  });
 };

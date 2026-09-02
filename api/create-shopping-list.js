@@ -1,21 +1,18 @@
 /**
  * Vercel Serverless Function — POST /api/create-shopping-list
  *
- * Turns CookTree's computed shortages into an Instacart shopping-list link.
- * Instacart performs the real product and retailer matching; CookTree never
- * receives a delivery address, payment method, or Instacart session.
- *
- * Required Vercel env var:
- *   INSTACART_API_KEY=keys.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
- *
- * Optional:
- *   INSTACART_API_ENV=production  (defaults to the development server)
+ * Resolves CookTree shortages against Shopify's live Global Catalog. No
+ * retailer key or shopper account is required: the response contains real
+ * products grouped into merchant-owned Shopify cart permalinks. The shopper
+ * still reviews products, shipping, taxes, and payment on each merchant site.
  */
 
-const DEVELOPMENT_ORIGIN = 'https://connect.dev.instacart.tools';
-const PRODUCTION_ORIGIN = 'https://connect.instacart.com';
-const CREATE_LINK_PATH = '/idp/v1/products/products_link';
-const MAX_LINE_ITEMS = 50;
+const SHOPIFY_CATALOG_URL = 'https://catalog.shopify.com/api/ucp/mcp';
+const SHOPIFY_AGENT_PROFILE =
+  'https://shopify.dev/ucp/agent-profiles/2026-04-08/valid-with-capabilities.json';
+const MAX_LINE_ITEMS = 20;
+const OFFERS_PER_ITEM = 10;
+const REQUEST_TIMEOUT_MS = 12_000;
 
 function cleanString(value, maxLength) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
@@ -24,40 +21,223 @@ function cleanString(value, maxLength) {
 function cleanQuantity(value) {
   const quantity = Number(value);
   if (!Number.isFinite(quantity) || quantity <= 0) return null;
-  return Math.round(Math.min(quantity, 10000) * 10) / 10;
+  return Math.max(1, Math.min(99, Math.ceil(quantity)));
 }
 
-function measurementUnit(unit) {
-  if (unit === 'g' || unit === 'ml') return unit;
-  return 'each';
+function cleanPostalCode(value) {
+  const postalCode = cleanString(value, 10).toUpperCase();
+  if (!postalCode) return '';
+  return /^[A-Z0-9][A-Z0-9 -]{1,8}[A-Z0-9]$/.test(postalCode) ? postalCode : null;
 }
 
-function normalizeLineItem(raw) {
+function normalizeLineItem(raw, index) {
   const name = cleanString(raw && raw.name, 100);
   const quantity = cleanQuantity(raw && raw.quantity);
   if (!name || quantity === null) return null;
-
-  const displayText = cleanString(raw && raw.displayText, 150);
   return {
+    id: cleanString(raw && raw.id, 80) || `line-${index + 1}`,
     name,
-    ...(displayText ? { display_text: displayText } : {}),
-    line_item_measurements: [{
-      quantity,
-      unit: measurementUnit(raw && raw.unit),
-    }],
+    quantity,
+    displayText: cleanString(raw && raw.displayText, 150),
   };
 }
 
-function normalizeInstacartUrl(value) {
+function safeHttpsUrl(value) {
   try {
     const url = new URL(value);
-    const allowed = url.protocol === 'https:' &&
-      (url.hostname === 'instacart.com' || url.hostname.endsWith('.instacart.com') ||
-       url.hostname === 'instacart.tools' || url.hostname.endsWith('.instacart.tools'));
-    return allowed ? url.href : null;
+    return url.protocol === 'https:' ? url.href : null;
   } catch {
     return null;
   }
+}
+
+function variantNumber(id, checkoutUrl) {
+  const gidMatch = cleanString(id, 120).match(/ProductVariant\/(\d+)$/);
+  if (gidMatch) return gidMatch[1];
+  const cartMatch = cleanString(checkoutUrl, 500).match(/\/cart\/(\d+):/);
+  return cartMatch ? cartMatch[1] : null;
+}
+
+function structuredContent(body) {
+  if (body && body.result && body.result.structuredContent) {
+    return body.result.structuredContent;
+  }
+  const blocks = body && body.result && Array.isArray(body.result.content)
+    ? body.result.content
+    : [];
+  const text = blocks.find(block => block && block.type === 'text' && block.text);
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text.text);
+    return parsed.structuredContent || parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function searchCatalog(lineItem, postalCode) {
+  const location = { country: 'US' };
+  const context = { address_country: 'US', currency: 'USD' };
+  if (postalCode) {
+    location.postal_code = postalCode;
+    context.postal_code = postalCode;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(SHOPIFY_CATALOG_URL, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        id: lineItem.id,
+        params: {
+          name: 'search_catalog',
+          arguments: {
+            meta: { 'ucp-agent': { profile: SHOPIFY_AGENT_PROFILE } },
+            catalog: {
+              query: `${lineItem.name} grocery ${lineItem.displayText}`.trim(),
+              filters: { available: true, ships_to: location },
+              context,
+              pagination: { limit: OFFERS_PER_ITEM },
+            },
+          },
+        },
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body || body.error) {
+    throw new Error(`Shopify catalog search failed (${response.status})`);
+  }
+
+  const content = structuredContent(body);
+  const products = content && Array.isArray(content.products) ? content.products : [];
+  const offers = [];
+
+  for (const product of products) {
+    const variants = Array.isArray(product && product.variants) ? product.variants : [];
+    for (const variant of variants) {
+      if (variant && variant.availability && variant.availability.available === false) continue;
+      const seller = variant && variant.seller;
+      const sellerName = cleanString(seller && seller.name, 120);
+      const sellerDomain = cleanString(seller && seller.domain, 180).toLowerCase();
+      const sellerUrl = safeHttpsUrl(seller && seller.url);
+      const checkoutUrl = safeHttpsUrl(variant && variant.checkout_url);
+      const productUrl = safeHttpsUrl(variant && variant.url);
+      const variantId = variantNumber(variant && variant.id, checkoutUrl);
+      const amount = Number(variant && variant.price && variant.price.amount);
+      const currency = cleanString(variant && variant.price && variant.price.currency, 3) || 'USD';
+      if (!sellerName || !sellerDomain || !sellerUrl || !checkoutUrl || !variantId ||
+          !Number.isInteger(amount) || amount < 0 || currency !== 'USD') continue;
+
+      offers.push({
+        lineId: lineItem.id,
+        requestedName: lineItem.name,
+        quantity: lineItem.quantity,
+        productTitle: cleanString(product && product.title, 160) || lineItem.name,
+        variantTitle: cleanString(variant && variant.title, 160),
+        sellerName,
+        sellerDomain,
+        sellerUrl,
+        variantId,
+        productUrl,
+        checkoutUrl,
+        unitAmount: amount,
+        totalAmount: amount * lineItem.quantity,
+        currency,
+      });
+    }
+  }
+
+  const cheapestBySeller = new Map();
+  for (const offer of offers) {
+    const previous = cheapestBySeller.get(offer.sellerDomain);
+    if (!previous || offer.unitAmount < previous.unitAmount) {
+      cheapestBySeller.set(offer.sellerDomain, offer);
+    }
+  }
+  return [...cheapestBySeller.values()];
+}
+
+function chooseOffers(searches) {
+  const sellerScores = new Map();
+  searches.forEach(({ offers }) => {
+    offers.forEach((offer, rank) => {
+      const score = sellerScores.get(offer.sellerDomain) || {
+        domain: offer.sellerDomain,
+        coverage: 0,
+        rank: 0,
+        total: 0,
+      };
+      score.coverage += 1;
+      score.rank += rank;
+      score.total += offer.totalAmount;
+      sellerScores.set(offer.sellerDomain, score);
+    });
+  });
+
+  const primary = [...sellerScores.values()].sort((a, b) =>
+    b.coverage - a.coverage || a.rank - b.rank || a.total - b.total
+  )[0];
+
+  const selected = [];
+  const unmatched = [];
+  searches.forEach(({ lineItem, offers }) => {
+    if (!offers.length) {
+      unmatched.push(lineItem.name);
+      return;
+    }
+    selected.push(
+      (primary && offers.find(offer => offer.sellerDomain === primary.domain)) || offers[0]
+    );
+  });
+  return { selected, unmatched, primaryDomain: primary && primary.domain };
+}
+
+function cartUrlForGroup(group) {
+  try {
+    const origin = new URL(group.sellerUrl).origin;
+    const cart = group.items
+      .map(item => `${item.variantId}:${item.quantity}`)
+      .join(',');
+    return `${origin}/cart/${cart}?utm_source=cooktree&utm_medium=agent`;
+  } catch {
+    return group.items[0] && group.items[0].checkoutUrl;
+  }
+}
+
+function groupOffers(selected, primaryDomain) {
+  const bySeller = new Map();
+  selected.forEach(offer => {
+    const group = bySeller.get(offer.sellerDomain) || {
+      sellerName: offer.sellerName,
+      sellerDomain: offer.sellerDomain,
+      sellerUrl: offer.sellerUrl,
+      items: [],
+      subtotalAmount: 0,
+      currency: offer.currency,
+    };
+    group.items.push(offer);
+    group.subtotalAmount += offer.totalAmount;
+    bySeller.set(offer.sellerDomain, group);
+  });
+
+  return [...bySeller.values()]
+    .map(group => ({
+      ...group,
+      shoppingUrl: cartUrlForGroup(group),
+      itemCount: group.items.length,
+      recommended: group.sellerDomain === primaryDomain,
+    }))
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended) || b.itemCount - a.itemCount);
 }
 
 module.exports = async (req, res) => {
@@ -69,98 +249,61 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'method not allowed' }); return; }
 
-  const apiKey = process.env.INSTACART_API_KEY;
-  if (!apiKey) {
-    res.status(503).json({
-      error: 'Instacart is not configured yet',
-      code: 'INSTACART_NOT_CONFIGURED',
-    });
+  const rawItems = Array.isArray(req.body && req.body.lineItems) ? req.body.lineItems : [];
+  if (!rawItems.length) {
+    res.status(400).json({ error: 'at least one line item is required' });
     return;
   }
-
-  const rawItems = Array.isArray(req.body && req.body.lineItems) ? req.body.lineItems : [];
   if (rawItems.length > MAX_LINE_ITEMS) {
     res.status(400).json({ error: `no more than ${MAX_LINE_ITEMS} line items are allowed` });
     return;
   }
-  const inputItems = rawItems;
-  const lineItems = inputItems.map(normalizeLineItem).filter(Boolean);
-  if (!lineItems.length) {
-    res.status(400).json({ error: 'at least one valid line item is required' });
-    return;
-  }
-  if (lineItems.length !== inputItems.length) {
+
+  const lineItems = rawItems.map(normalizeLineItem);
+  if (lineItems.some(item => !item)) {
     res.status(400).json({ error: 'one or more line items are invalid' });
     return;
   }
-
-  const environment = process.env.INSTACART_API_ENV === 'production'
-    ? 'production'
-    : 'development';
-  const apiOrigin = environment === 'production' ? PRODUCTION_ORIGIN : DEVELOPMENT_ORIGIN;
-  const title = cleanString(req.body && req.body.title, 100) || 'CookTree grocery list';
-  const linkbackUrl = cleanString(process.env.SITE_URL, 500) ||
-    'https://cooktree-webmcp.vercel.app/';
-  const payload = {
-    title,
-    link_type: 'shopping_list',
-    expires_in: 30,
-    instructions: [
-      'Choose a nearby store, review Instacart\u2019s product matches, and confirm current prices before checkout.',
-    ],
-    line_items: lineItems,
-    ...(linkbackUrl ? {
-      landing_page_configuration: { partner_linkback_url: linkbackUrl },
-    } : {}),
-  };
-
-  let upstream;
-  try {
-    upstream = await fetch(apiOrigin + CREATE_LINK_PATH, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    res.status(502).json({ error: 'Instacart request failed: ' + error.message });
+  const postalCode = cleanPostalCode(req.body && req.body.postalCode);
+  if (postalCode === null) {
+    res.status(400).json({ error: 'postal code is invalid' });
     return;
   }
 
-  let body;
-  try {
-    body = await upstream.json();
-  } catch {
-    body = null;
-  }
-
-  if (!upstream.ok) {
-    console.error('[create-shopping-list] Instacart error', {
-      status: upstream.status,
-      environment,
-    });
-    const detail = body && (body.error_description || body.message || body.error);
+  const results = await Promise.allSettled(
+    lineItems.map(lineItem => searchCatalog(lineItem, postalCode))
+  );
+  const searches = results.map((result, index) => ({
+    lineItem: lineItems[index],
+    offers: result.status === 'fulfilled' ? result.value : [],
+    failed: result.status === 'rejected',
+  }));
+  const failedSearches = searches.filter(search => search.failed).length;
+  const { selected, unmatched, primaryDomain } = chooseOffers(searches);
+  if (!selected.length) {
     res.status(502).json({
-      error: 'Instacart could not create the shopping list',
-      detail: cleanString(detail, 200),
+      error: 'Shopify could not find purchasable products for this list right now',
+      code: 'SHOPIFY_NO_MATCHES',
     });
     return;
   }
 
-  const shoppingUrl = normalizeInstacartUrl(body && body.products_link_url);
-  if (!shoppingUrl) {
-    res.status(502).json({ error: 'Instacart returned an invalid shopping-list URL' });
-    return;
-  }
-
+  const groups = groupOffers(selected, primaryDomain);
+  const liveTotalAmount = groups.reduce((sum, group) => sum + group.subtotalAmount, 0);
   res.status(200).json({
-    shoppingUrl,
-    provider: 'Instacart',
-    environment,
-    itemCount: lineItems.length,
-    expiresInDays: 30,
+    provider: 'Shopify Global Catalog',
+    source: 'live',
+    postalCode: postalCode || null,
+    requestedItemCount: lineItems.length,
+    matchedItemCount: selected.length,
+    unmatched,
+    groups,
+    liveTotalAmount,
+    currency: 'USD',
+    warnings: [
+      ...(groups.length > 1 ? [`Products are split across ${groups.length} merchant carts.`] : []),
+      ...(failedSearches ? [`${failedSearches} catalog search${failedSearches === 1 ? '' : 'es'} timed out or failed.`] : []),
+      'Shipping, taxes, substitutions, and final availability are confirmed by each merchant.',
+    ],
   });
 };
