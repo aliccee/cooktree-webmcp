@@ -460,6 +460,10 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   <section class="col">
     <div class="menu-wrap">
       <div class="panel-head" style="padding-bottom:0">This Week <span class="dates" id="wDates"></span> <span class="count" id="wCount">0 dishes</span></div>
+      <div class="addrow" style="padding:0 22px 12px">
+        <input id="genDesc" placeholder="Describe a dish — AI adds it (e.g. braised pork belly)…">
+        <button class="btn" id="genBtn">Generate</button>
+      </div>
       <div class="menu" id="menu"></div>
     </div>
     <div class="tree-wrap">
@@ -722,6 +726,36 @@ const qty = (v,u)=> u==='pc' ? (Math.round(v*10)/10)+'' : (v>=1000? (v/1000).toF
 
 /* ============ 4. TOOLS — the single layer ============ */
 /* Both the site's own UI and any agent call invoke(). That is the whole point. */
+
+/* Same-origin Vercel Function — see api/generate-dish.js and DEPLOY.md.
+   The key itself lives only as a Vercel env var, never in this file. Works
+   automatically once deployed on Vercel; on plain static hosting (or
+   `python3 -m http.server`) there's no /api route, so generate_dish just
+   returns a clear error instead of a dead fetch. */
+const GENERATE_DISH_URL = '/api/generate-dish';
+
+/* Turn a validated {dish} from the worker into a real DISHES[] entry.
+   Existing ingredients are reused as-is (their price/pack stays canonical);
+   only genuinely new ingredients get a new CATALOG row. */
+function mergeGeneratedDish(dish){
+  const need={}; const newIngredients=[];
+  dish.ingredients.forEach(it=>{
+    let id=resolveItem(it.name);
+    if(!id){
+      id=it.id; let n=1;
+      while(CATALOG[id]) id=it.id+(n++);
+      CATALOG[id]={n:it.name, cat:it.category, u:it.unit,
+        pack:{size:it.packSize, label:it.packLabel, price:it.packPrice}, icon:'leaf'};
+      newIngredients.push(it.name);
+    }
+    need[id]=(need[id]||0)+it.qty;
+  });
+  const d={id:dish.id, n:dish.name, cn:dish.cn||'', cuisine:dish.cuisine,
+    min:dish.min, glyph:dish.glyph, serves:dish.serves, gear:dish.gear, need, generated:true};
+  DISHES.push(d); DISH_BY_ID[d.id]=d;
+  return {dish:d, newIngredients};
+}
+
 const TOOLS = [
 {
   name:'get_kitchen',
@@ -920,6 +954,29 @@ const TOOLS = [
             total:c.total, paymentMethod:'•••• 4242', cardNumber:'<never exposed to tools>'};
   },
   summary:r=>r.error?r.error:(r.status==='placed'?('order '+r.orderId+' · '+money(r.total)+' · paid with •••• 4242'):r.status)
+},
+{
+  name:'generate_dish',
+  description:'Turn a free-text dish description into a real, plannable dish — ingredients, quantities and cook time inferred by an AI model, then added to the same dependency-tree engine every other dish uses. Not in the site’s fixed catalog until this is called.',
+  inputSchema:{type:'object',properties:{description:{type:'string'}},required:['description']},
+  async run(a){
+    const description=(a.description||'').trim();
+    if(!description) return {error:'description is required'};
+    let res;
+    try{
+      res = await fetch(GENERATE_DISH_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({description})});
+    }catch(e){ return {error:'could not reach /api/generate-dish: '+e.message}; }
+    if(res.status===404) return {error:'generate_dish needs the Vercel deploy — /api/generate-dish doesn’t exist on this host (see DEPLOY.md)'};
+    let body;
+    try{ body = await res.json(); }catch(e){ return {error:'server returned non-JSON response ('+res.status+')'}; }
+    if(!res.ok || body.error) return {error:body.error||('server error '+res.status)};
+    const {dish, newIngredients} = mergeGeneratedDish(body.dish);
+    return {added:dish.n, cuisine:dish.cuisine, minutes:dish.min,
+      ingredients:dish.need ? Object.keys(dish.need).length : 0, newIngredients};
+  },
+  summary:r=>r.error?r.error:('added "'+r.added+'" · '+r.minutes+' min · '+r.ingredients+' ingredients'+
+    (r.newIngredients.length?' · '+r.newIngredients.length+' new to catalog':''))
 }
 ];
 const TOOL_BY_NAME = Object.fromEntries(TOOLS.map(t=>[t.name,t]));
@@ -1205,13 +1262,15 @@ function renderMenu(){
     const on=S.week.indexOf(d.id)>=0;
     const keys=Object.keys(d.need);
     const miss=keys.filter(k=>(S.kitchen[k]||0)<d.need[k]).length;
-    const cu=CUISINE[d.cuisine];
+    // fallback keeps AI-generated dishes renderable when they invent a cuisine
+    const cu=CUISINE[d.cuisine]||{label:String(d.cuisine||'').toUpperCase()};
     return '<span class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'" role="button" tabindex="0">'+
       '<span class="shot"><span class="fb">'+ic(d.glyph,40)+'</span>'+
-        '<img src="dishes/'+d.id+'.jpg" alt="" loading="lazy" onerror="this.remove()"></span>'+
+        (d.generated?'':'<img src="dishes/'+d.id+'.jpg" alt="" loading="lazy" onerror="this.remove()">')+
+      '</span>'+
       '<span class="pad">'+
-        '<span class="cui">'+cu.label+'</span>'+
-        '<span class="top"><span><span class="nm">'+d.n+'</span><span class="cn">'+d.cn+'</span></span></span>'+
+        '<span class="cui">'+cu.label+(d.generated?' · AI':'')+'</span>'+
+        '<span class="top"><span><span class="nm">'+d.n+'</span><span class="cn">'+(d.cn||'')+'</span></span></span>'+
       '</span>'+
       '<span class="meta">'+d.min+' MIN'+(miss?' · <span class="miss">'+miss+' SHORT</span>':' · <span class="ok">COMPLETE</span>')+'</span>'+
       (on?'<span class="portions"><span class="pl">Portions</span>'+
@@ -1421,6 +1480,14 @@ $('demoBtn').addEventListener('click',()=>{
   S.kitchen=Object.assign({},DEMO_KITCHEN);
   logRow('usr','$ load demo kitchen'); render();
 });
+$('genBtn').addEventListener('click',async()=>{
+  const v=$('genDesc').value.trim(); if(!v) return;
+  $('genDesc').value=''; $('genBtn').disabled=true; $('genBtn').textContent='…';
+  logRow('usr','› '+v);
+  await invoke('generate_dish',{description:v},'ui');
+  $('genBtn').disabled=false; $('genBtn').textContent='Generate';
+});
+$('genDesc').addEventListener('keydown',e=>{ if(e.key==='Enter') $('genBtn').click(); });
 $('send').addEventListener('click',()=>{
   const v=$('prompt').value.trim(); if(!v) return;
   $('prompt').value=''; logRow('usr','› '+v); runSteps(route(v));
