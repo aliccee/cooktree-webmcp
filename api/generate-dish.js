@@ -165,13 +165,18 @@ module.exports = async (req, res) => {
   }
 
   const data = await upstream.json();
-  const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  const choice = data && data.choices && data.choices[0];
+  const content = choice && choice.message && choice.message.content;
   if (!content) { res.status(502).json({ error: 'empty response from model' }); return; }
 
   let parsedRaw;
   try {
     parsedRaw = parseModelJson(content);
   } catch {
+    console.error('[generate-dish] invalid model JSON', {
+      finishReason: choice && choice.finish_reason,
+      contentLength: String(content).length,
+    });
     res.status(502).json({ error: 'model did not return valid JSON' });
     return;
   }
