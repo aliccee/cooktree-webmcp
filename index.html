@@ -96,6 +96,28 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 }
 .panel-head::before{content:"";position:absolute;top:10px;left:18px;width:26px;height:2px;background:var(--red)}
 .panel-head{padding-top:24px}
+.favfilter{
+  margin-left:12px;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;
+  border:1px solid var(--border);color:var(--faint);font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase
+}
+.favfilter .hi{display:grid;place-items:center;line-height:0}
+.favfilter:hover{border-color:var(--text);color:var(--text)}
+.favfilter.has{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,var(--border))}
+.favfilter[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.favfilter:disabled{opacity:.55;cursor:default}
+.favfilter:disabled:hover{border-color:var(--border);color:var(--faint)}
+.dish .fav{
+  position:absolute;top:8px;right:8px;z-index:2;width:28px;height:28px;display:grid;place-items:center;
+  color:#fff;opacity:0;transition:.15s;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))
+}
+.dish:hover .fav,.dish .fav.on{opacity:1}
+.dish .fav.on{color:var(--red);filter:drop-shadow(0 1px 2px rgba(255,255,255,.9))}
+.dish .fav:hover{transform:scale(1.14)}
+.menu-empty{
+  flex:none;padding:26px 22px;color:var(--faint);font-size:13px;border:1px dashed var(--border);
+  margin:0 22px 4px;text-align:center
+}
 .panel-head .dates{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:none;font-weight:400;color:var(--faint);margin-left:2px}
 .panel-head .count{
   margin-left:auto;font-size:10.5px;letter-spacing:.04em;text-transform:none;font-weight:500;
@@ -117,9 +139,17 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px;
 }
 .kitem:hover .nm{color:var(--red)}
+.kitem .kact{display:none;gap:2px;flex:none;margin-left:2px}
+.kitem:hover .kact,.kitem:focus-within .kact{display:flex}
+.kitem:hover .qt{display:none}
+.kbtn{width:22px;height:22px;display:grid;place-items:center;color:var(--faint);border:1px solid transparent}
+.kbtn:hover{color:var(--red);border-color:var(--border-2)}
+.kedit{width:66px;height:22px;padding:0 6px;border:1px solid var(--red);border-radius:0;
+  background:var(--surface);font-family:var(--mono);font-size:11px;text-align:right;flex:none}
 .kitem .ic{color:var(--muted);flex:none;display:grid;place-items:center}
 .kitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-family:var(--serif);font-size:14.5px}
+.kitem .nm i{font-style:normal;font-size:12px;color:var(--faint);margin-left:6px}
 .kitem .qt{font-family:var(--mono);font-size:11px;color:var(--faint)}
 .empty{font-size:12px;color:var(--faint);padding:4px 8px;font-style:italic}
 .addrow{display:flex;gap:6px;margin-top:8px}
@@ -202,9 +232,11 @@ a.btn{text-decoration:none}
   position:relative;display:block;width:100%;aspect-ratio:16/10;overflow:hidden;
   background:var(--surface-2);border-bottom:1px solid var(--border);flex:none
 }
-.dish .shot img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;display:block;
-  filter:saturate(1.02) contrast(1.02);transition:transform .5s cubic-bezier(.2,.7,.3,1)}
-.dish:hover .shot img{transform:scale(1.045)}
+.dish .shot .ph{
+  position:absolute;inset:0;z-index:1;background-size:cover;background-position:center;
+  background-repeat:no-repeat;transition:transform .5s cubic-bezier(.2,.7,.3,1)
+}
+.dish:hover .shot .ph{transform:scale(1.045)}
 .dish .shot .fb{position:absolute;inset:0;display:grid;place-items:center;color:var(--border-2)}
 .dish .pad{padding:13px 15px 0;display:flex;flex-direction:column;flex:1}
 .dish .cui{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
@@ -281,6 +313,7 @@ a.btn{text-decoration:none}
    CART
    ============================================================ */
 .stat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 18px}
+.stat.one{grid-template-columns:1fr}
 .stat>div{border:1px solid var(--border);border-radius:0;padding:11px 13px;background:transparent}
 .stat .k{font-size:9px;letter-spacing:.15em;font-family:var(--mono);text-transform:uppercase;color:var(--faint);font-weight:640;white-space:nowrap}
 .stat .v{font-size:20px;font-weight:800;letter-spacing:-.03em;margin-top:3px;font-variant-numeric:tabular-nums}
@@ -464,7 +497,7 @@ a.btn{text-decoration:none}
     <div class="scroll" id="kitchenBody"></div>
     <div style="flex:none;padding:0 18px 16px">
       <div class="addrow">
-        <input id="addName" placeholder="Add item…">
+        <input id="addName" placeholder="Add item · 加食材…">
         <input id="addQty" placeholder="Amount" style="flex:none;width:82px">
       </div>
       <div class="addrow">
@@ -479,7 +512,9 @@ a.btn{text-decoration:none}
   <!-- ============ CENTER ============ -->
   <section class="col">
     <div class="menu-wrap">
-      <div class="panel-head" style="padding-bottom:0">This Week <span class="dates" id="wDates"></span> <span class="count" id="wCount">0 dishes</span></div>
+      <div class="panel-head" style="padding-bottom:0">This Week <span class="dates" id="wDates"></span>
+        <button class="favfilter" id="favFilter" aria-pressed="false"><span class="hi"></span><span class="ct"></span></button>
+        <span class="count" id="wCount">0 dishes</span></div>
       <div class="addrow" style="padding:0 22px 12px">
         <input id="genDesc" placeholder="Describe a dish — AI adds it (e.g. braised pork belly)…">
         <button class="btn" id="genBtn">Generate</button>
@@ -569,7 +604,11 @@ const ICONS = {
   steam:'<path d="M4 12h16v5a3 3 0 01-3 3H7a3 3 0 01-3-3z"/><path d="M8 8c0-1.5 1-1.5 1-3M12 8c0-1.5 1-1.5 1-3M16 8c0-1.5 1-1.5 1-3"/>',
   bowl:'<path d="M3 12h18a9 9 0 01-18 0z" fill="currentColor" fill-opacity=".13"/><path d="M3 12h18a9 9 0 01-18 0z"/><path d="M8 8.6c0-1.5 1.2-1.7 1.2-3.1M12 8.6c0-1.5 1.2-1.7 1.2-3.1M16 8.6c0-1.5 1.2-1.7 1.2-3.1"/>',
   plate:'<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12.5" rx="4.8" ry="3.5" fill="currentColor" fill-opacity=".14"/><ellipse cx="12" cy="12.5" rx="4.8" ry="3.5"/><path d="M9.8 10.2c.7-1.3 1.9-1.7 3-1.4"/>',
-  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+  pencil:'<path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17v3z"/><path d="M14.5 6.5l3 3"/>',
+  heart:'<path d="M12 20.5l-1.5-1.35C5.6 14.8 2.9 12.4 2.9 9.4 2.9 7 4.8 5.1 7.2 5.1c1.4 0 2.7.65 3.5 1.65l1.3 1.6 1.3-1.6c.8-1 2.1-1.65 3.5-1.65 2.4 0 4.3 1.9 4.3 4.3 0 3-2.7 5.4-7.6 9.75z"/>',
+  heartFull:'<path d="M12 20.5l-1.5-1.35C5.6 14.8 2.9 12.4 2.9 9.4 2.9 7 4.8 5.1 7.2 5.1c1.4 0 2.7.65 3.5 1.65l1.3 1.6 1.3-1.6c.8-1 2.1-1.65 3.5-1.65 2.4 0 4.3 1.9 4.3 4.3 0 3-2.7 5.4-7.6 9.75z" fill="currentColor"/>',
+  trash:'<path d="M4 7h16"/><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/><path d="M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12"/>'
 };
 function ic(n,s){s=s||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||ICONS.leaf)+'</svg>';}
 
@@ -619,8 +658,26 @@ const CATALOG = {
   oliveoil:      {n:'Olive oil',         cat:'seasoning', u:'ml',pack:{size:500,label:'1 bottle',price:7.20}, icon:'bottle'},
   wok:           {n:'Wok',               cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:32.00}, icon:'wok'},
   pot:           {n:'Stock pot',         cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:28.00}, icon:'pot'},
-  steamer:       {n:'Steamer',           cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:24.00}, icon:'steam'}
+  steamer:       {n:'Steamer',           cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:24.00}, icon:'steam'},
+  stewpot:       {n:'Stew pot',          cat:'cookware',  u:'pc',pack:{size:1,label:'1',price:39.00}, icon:'pot'},
+  smallpan:      {n:'Small pan',         cat:'cookware',  u:'pc',pack:{size:1,label:'no lid',price:18.00}, icon:'wok'},
+  largepan:      {n:'Large pan',         cat:'cookware',  u:'pc',pack:{size:1,label:'with lid',price:34.00}, icon:'wok'}
 };
+
+/* Chinese names for every catalogue row. The dish cards have carried cn from
+   the start; the ingredients had not, so "蒜" resolved to nothing while
+   "麻婆豆腐" worked. Both halves of the app should answer to both languages. */
+const CN_NAMES = {
+  tomato:'番茄', onion:'洋葱', garlic:'大蒜', ginger:'生姜', scallion:'小葱',
+  cilantro:'香菜', broccoli:'西兰花', eggplant:'茄子', thaibasil:'九层塔',
+  beef:'牛腩', pork:'猪肉末', chicken:'鸡腿肉', seabass:'鲈鱼', egg:'鸡蛋',
+  tofu:'嫩豆腐', rice:'大米', spaghetti:'意面', coconutmilk:'椰浆', parmesan:'帕玛森芝士',
+  soy:'酱油', salt:'盐', sugar:'糖', cornstarch:'淀粉', wine:'料酒', fishsauce:'鱼露',
+  doubanjiang:'豆瓣酱', peppercorn:'花椒', staranise:'八角', currypaste:'绿咖喱酱',
+  oliveoil:'橄榄油', wok:'炒锅', pot:'汤锅', steamer:'蒸锅', stewpot:'炖锅',
+  smallpan:'小平底锅', largepan:'大平底锅'
+};
+for(const k in CN_NAMES){ if(CATALOG[k]) CATALOG[k].cn = CN_NAMES[k]; }
 
 const DISHES = [
   {id:'beefstew', n:'Tomato Beef Stew', cn:'番茄牛腩', cuisine:'home', min:90, glyph:'pot', serves:2, gear:['pot'],
@@ -653,8 +710,54 @@ const ACCOUNT = [
 const DEMO_KITCHEN = {
   soy:300, salt:400, sugar:300, cornstarch:200, oliveoil:250,
   rice:800, egg:6, garlic:30, ginger:40, tofu:350, beef:500,
-  wok:1, pot:1
+  wok:1, pot:1, smallpan:1, largepan:1
 };
+
+/* ---- Plating a generated dish -------------------------------------------
+   No image to fetch and none to invent: the picture is derived from the
+   recipe. The dominant ingredients pick the palette, the cookware picks the
+   vessel, and the dish name seeds the scatter, so the same dish always plates
+   the same way. ------------------------------------------------------------ */
+/* Ordered by how much an ingredient decides the colour of the finished dish.
+   A protein or a sauce base outranks a herb that only ever lands on top, so a
+   ceviche does not come out pesto-green because it was garnished. */
+const PLATE_TONES=[
+  {k:['seabass','fish','shrimp','squid','scallop','cod','salmon','crab','oyster'],  base:['#EFE7DA','#E2D7C6'], depth:'#CFC2AC'},
+  {k:['tomato','doubanjiang','chili','paprika','gochujang','pork','beef','bacon','lamb'], base:['#B0421F','#8E3216'], depth:'#6E2410'},
+  {k:['currypaste','pesto','spinach','broccoli','pea','kale','basil'],              base:['#7E9A4E','#5F7C36'], depth:'#4A6428'},
+  {k:['rice','egg','potato','corn','noodle','spaghetti','flour','tofu','coconut'],  base:['#E5C983','#D4B267'], depth:'#BF9C52'},
+  {k:['soy','wine','sesame','miso','mushroom','onion','garlic'],                    base:['#A9743C','#8B5A2B'], depth:'#6E4520'}
+];
+function seedFrom(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function plateSvg(dish){
+  let s=seedFrom(dish.id||dish.n||'dish');
+  const rnd=()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return (s%100000)/100000;};
+  const ids=Object.keys(dish.need||{});
+  let tone=PLATE_TONES[4];
+  for(const t of PLATE_TONES){ if(ids.some(i=>t.k.some(k=>i.indexOf(k)>=0))){ tone=t; break; } }
+  const oval=(dish.gear||[]).indexOf('steamer')>=0;
+  const W=320,H=200,cx=W/2,cy=H/2,R=oval?122:104,RY=oval?80:98,ir=R-22,iry=RY-22;
+  let g='';
+  g+='<defs><radialGradient id="pg" cx="42%" cy="34%"><stop offset="0" stop-color="'+tone.base[0]+'"/><stop offset="1" stop-color="'+tone.base[1]+'"/></radialGradient></defs>';
+  g+='<rect width="'+W+'" height="'+H+'" fill="#EFEBE3"/>';
+  g+='<ellipse cx="'+(cx+3)+'" cy="'+(cy+6)+'" rx="'+(R+5)+'" ry="'+(RY+5)+'" fill="#C9C1B2" opacity=".45"/>';
+  g+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+R+'" ry="'+RY+'" fill="#FBF9F5"/>';
+  g+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(R-5)+'" ry="'+(RY-5)+'" fill="none" stroke="#E2DCD1"/>';
+  g+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(ir+4)+'" ry="'+(iry+4)+'" fill="'+tone.depth+'" opacity=".85"/>';
+  g+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+ir+'" ry="'+iry+'" fill="url(#pg)"/>';
+  const n=Math.min(14,Math.max(6,ids.length*2));
+  for(let i=0;i<n;i++){
+    const a=rnd()*6.283, rr=ir*Math.sqrt(rnd())*.78;
+    const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr*(oval?.7:1), r=7+rnd()*11;
+    g+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+tone.depth+'" opacity=".55"/>';
+  }
+  for(let i=0;i<12;i++){
+    const a=rnd()*6.283, rr=ir*Math.sqrt(rnd())*.82;
+    const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr*(oval?.7:1);
+    g+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(6+rnd()*8).toFixed(1)+'" height="2.6" rx="1.3" fill="#5F7A32" transform="rotate('+(rnd()*180).toFixed(0)+' '+x.toFixed(1)+' '+y.toFixed(1)+')"/>';
+  }
+  return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">'+g+'</svg>');
+}
 
 /* ============ 2. STATE ============ */
 const S = {
@@ -664,11 +767,18 @@ const S = {
   gearCart:[],          // cookware the user chose to buy
   lastDiff:null,
   lastExplain:null,
+  favorites:[],         // dish ids, kept across reloads when storage allows
+  favOnly:false,
   orders:[],           // retailer handoffs created THROUGH this agent, this session
   focus:null,          // hovered/selected node key
   mode:'agent',
   mcp:false
 };
+
+const FAV_KEY='cooktree.favorites';
+function loadFavorites(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)); if(Array.isArray(v)) S.favorites=v; }catch(e){} }
+function saveFavorites(){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(S.favorites)); }catch(e){} }
+const isFav = id => S.favorites.indexOf(id)>=0;
 
 /* ============ 3. ENGINE ============ */
 function computeTree(){
@@ -770,8 +880,49 @@ function shoppingLineItems(cart){
 /* Turn a validated {dish} from the worker into a real DISHES[] entry.
    Existing ingredients are reused as-is (their price/pack stays canonical);
    only genuinely new ingredients get a new CATALOG row. */
+/* The model proposes a quantity; the site decides whether it is plausible.
+   A weight far below what the ingredient is even sold in is a unit slip — a
+   model asking for 3 g of onion when an onion is a 200 g pack. Judge it against
+   our own canonical pack size rather than a hardcoded table, and say so out
+   loud: the model is a source, not an authority. */
+const IMPLAUSIBLE_FRACTION = 0.05;   // under 5% of a pack
+const NORMALISED_FRACTION  = 0.25;   // pull up to a quarter of one
+
+function plausibleQty(id, qty, unit){
+  const c = CATALOG[id];
+  if(!c || (unit!=='g' && unit!=='ml')) return {qty};
+  const pack = c.pack && c.pack.size;
+  if(!pack || qty >= pack*IMPLAUSIBLE_FRACTION) return {qty};
+  const fixed = Math.round(pack*NORMALISED_FRACTION);
+  return {qty:fixed, note:c.n+' '+qty+unit+' → '+fixed+unit+
+    ' (under '+Math.round(IMPLAUSIBLE_FRACTION*100)+'% of '+c.pack.label+')'};
+}
+
+/* The model may name cookware we have never heard of ("pressure cooker").
+   Kit check and add_gear_to_cart both read CATALOG, so an unknown id would
+   throw. Map what we recognise, and mint a real buyable row for the rest. */
+const GEAR_ALIASES={
+  wok:'wok', skillet:'wok',
+  'small pan':'smallpan', 'frying pan':'smallpan', 'saute pan':'smallpan', 'omelette pan':'smallpan',
+  'large pan':'largepan', 'braising pan':'largepan', 'covered pan':'largepan', 'lidded pan':'largepan',
+  'stew pot':'stewpot', 'dutch oven':'stewpot', 'casserole':'stewpot', 'braiser':'stewpot',
+  'slow cooker':'stewpot', 'pressure cooker':'stewpot',
+  pot:'pot', 'stock pot':'pot', saucepan:'pot',
+  steamer:'steamer', 'steaming basket':'steamer', 'bamboo steamer':'steamer', 'steam basket':'steamer'};
+function resolveGear(name){
+  if(!name) return null;
+  const k=String(name).toLowerCase().trim();
+  if(CATALOG[k] && CATALOG[k].cat==='cookware') return k;
+  if(GEAR_ALIASES[k]) return GEAR_ALIASES[k];
+  for(const a in GEAR_ALIASES){ if(k.indexOf(a)>=0) return GEAR_ALIASES[a]; }
+  let id=k.replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||'cookware';
+  if(!CATALOG[id]) CATALOG[id]={n:name.replace(/\b\w/g,c=>c.toUpperCase()),
+    cat:'cookware', u:'pc', pack:{size:1,label:'1',price:24.00}, icon:'pot'};
+  return id;
+}
+
 function mergeGeneratedDish(dish){
-  const need={}; const newIngredients=[];
+  const need={}; const newIngredients=[]; const normalised=[];
   dish.ingredients.forEach(it=>{
     let id=resolveItem(it.name);
     if(!id){
@@ -781,13 +932,24 @@ function mergeGeneratedDish(dish){
         pack:{size:it.packSize, label:it.packLabel, price:it.packPrice}, icon:'leaf'};
       newIngredients.push(it.name);
     }
-    need[id]=(need[id]||0)+it.qty;
+    const v = plausibleQty(id, it.qty, it.unit);
+    if(v.note) normalised.push(v.note);
+    need[id]=(need[id]||0)+v.qty;
   });
   const d={id:dish.id, n:dish.name, cn:dish.cn||'', cuisine:dish.cuisine,
-    min:dish.min, glyph:dish.glyph, serves:dish.serves, gear:dish.gear, need,
+    min:dish.min, glyph:dish.glyph, serves:dish.serves,
+    gear:(dish.gear||[]).map(resolveGear).filter(Boolean), need,
     image:dish.image||'', generated:true};
-  DISHES.push(d); DISH_BY_ID[d.id]=d;
-  return {dish:d, newIngredients};
+
+  /* The model samples, so asking for the same dish twice — in either language —
+     comes back slightly different. That is fine; what is not fine is two
+     identical cards. A repeat replaces the entry in place and keeps the dish in
+     the week if it was already planned. */
+  const at = DISHES.findIndex(x=>x.id===d.id);
+  const regenerated = at >= 0;
+  if(regenerated) DISHES[at]=d; else DISHES.push(d);
+  DISH_BY_ID[d.id]=d;
+  return {dish:d, newIngredients, normalised, regenerated};
 }
 
 const TOOLS = [
@@ -840,16 +1002,32 @@ const TOOLS = [
                               : 'nothing matched — kitchen unchanged'
 },
 {
+  name:'set_favorite',
+  description:'Keep a dish at the front of the list, or let it go. Favourites are a shortlist, not a plan — favouriting does not cook anything.',
+  inputSchema:{type:'object',properties:{dish:{type:'string'},favorite:{type:'boolean'}},required:['dish']},
+  run(a){
+    const id=resolveDish(a.dish);
+    if(!id) return {error:'no such dish: '+a.dish};
+    const want = a.favorite===undefined ? !isFav(id) : !!a.favorite;
+    if(want && !isFav(id)) S.favorites.push(id);
+    if(!want) S.favorites=S.favorites.filter(x=>x!==id);
+    saveFavorites();
+    return {dish:DISH_BY_ID[id].n, favorite:want, favorites:S.favorites.length};
+  },
+  summary:r=>r.error?r.error:((r.favorite?'★ ':'☆ ')+r.dish+' · '+r.favorites+' favourite'+(r.favorites===1?'':'s'))
+},
+{
   name:'search_dishes',
   description:'Find dishes by cooking time, cuisine, ingredients that must be used, or ingredients to avoid. Ranks by how much of it you already have.',
   inputSchema:{type:'object',properties:{
     maxMinutes:{type:'number'}, cuisine:{type:'string'},
     mustUse:{type:'array',items:{type:'string'}}, exclude:{type:'array',items:{type:'string'}},
-    limit:{type:'number'}}},
+    favoritesOnly:{type:'boolean'}, limit:{type:'number'}}},
   run(a){
     const must=(a.mustUse||[]).map(resolveItem).filter(Boolean);
     const excl=(a.exclude||[]).map(resolveItem).filter(Boolean);
     let out = DISHES.filter(d=>{
+      if(a.favoritesOnly && !isFav(d.id)) return false;
       if(a.maxMinutes && d.min>a.maxMinutes) return false;
       if(a.cuisine && d.cuisine!==String(a.cuisine).toLowerCase()) return false;
       if(must.length && !must.every(m=>d.need[m]!=null)) return false;
@@ -1026,23 +1204,30 @@ const TOOLS = [
     let body;
     try{ body = await res.json(); }catch(e){ return {error:'server returned non-JSON response ('+res.status+')'}; }
     if(!res.ok || body.error) return {error:body.error||('server error '+res.status)};
-    const {dish, newIngredients} = mergeGeneratedDish(body.dish);
+    const {dish, newIngredients, normalised, regenerated} = mergeGeneratedDish(body.dish);
+    if(normalised.length) ctx && ctx.log('cmp','      normalised by the site: '+normalised.join(' · '));
     return {added:dish.n, cuisine:dish.cuisine, minutes:dish.min,
       ingredients:dish.need ? Object.keys(dish.need).length : 0,
-      image:body.image&&body.image.status||'unavailable', newIngredients};
+      image:body.image&&body.image.status||'unavailable', newIngredients, normalised,
+      regenerated:!!regenerated};
   },
-  summary:r=>r.error?r.error:('added "'+r.added+'" · '+r.minutes+' min · '+r.ingredients+' ingredients'+
+  summary:r=>r.error?r.error:((r.regenerated?'regenerated "':'added "')+r.added+'" · '+r.minutes+' min · '+r.ingredients+' ingredients'+
     ' · image '+r.image+
+    ((r.normalised&&r.normalised.length)?' · '+r.normalised.length+' qty normalised':'')+
     (r.newIngredients.length?' · '+r.newIngredients.length+' new to catalog':''))
 }
 ];
 const TOOL_BY_NAME = Object.fromEntries(TOOLS.map(t=>[t.name,t]));
 
 /* fuzzy resolvers so both the agent and the UI can pass human words */
-function resolveItem(s){
-  if(!s) return null; s=String(s).toLowerCase().trim();
+function resolveItem(raw){
+  if(!raw) return null;
+  const t=String(raw).trim(); const s=t.toLowerCase();
   if(CATALOG[s]) return s;
+  for(const k in CATALOG){ if(CATALOG[k].cn===t) return k; }                       // exact Chinese
   for(const k in CATALOG){ if(CATALOG[k].n.toLowerCase()===s) return k; }
+  for(const k in CATALOG){ if(CATALOG[k].cn && (t.indexOf(CATALOG[k].cn)>=0 ||
+      CATALOG[k].cn.indexOf(t)>=0)) return k; }                                     // partial Chinese
   for(const k in CATALOG){ const n=CATALOG[k].n.toLowerCase(); if(n.indexOf(s)>=0||s.indexOf(n)>=0) return k; }
   const alias={'peppercorn':'peppercorn','sichuan pepper':'peppercorn','szechuan peppercorn':'peppercorn',
     'green onion':'scallion','spring onion':'scallion','tofu':'tofu','soy':'soy','fish':'seabass',
@@ -1114,8 +1299,19 @@ function registerWebMCP(){
     }
   }));
   try{
-    if(typeof mc.provideContext==='function') mc.provideContext({tools:defs});
-    else if(typeof mc.registerTool==='function') defs.forEach(d=>mc.registerTool(d));
+    /* Canonical WebMCP registration — one registerTool() call per tool:
+     *   document.modelContext.registerTool({ name, description, inputSchema, execute })
+     * provideContext() is the batch form and is used only where registerTool
+     * is absent. All 12 tools are defined once in §4 TOOLS[]. */
+    if(typeof mc.registerTool==='function'){
+      defs.forEach(d=>mc.registerTool({
+        name:        d.name,
+        description: d.description,
+        inputSchema: d.inputSchema,
+        execute:     d.execute
+      }));
+    }
+    else if(typeof mc.provideContext==='function') mc.provideContext({tools:defs});
     S.mcp=true;
     pill.classList.add('live');
     txt.textContent='WebMCP connected · '+defs.length+' tools';
@@ -1172,6 +1368,14 @@ function route(text){
     const g=['steamer','wok','pot'].find(x=>s.indexOf(x)>=0)||'steamer';
     return [['add_gear_to_cart',{item:g}]];
   }
+  if(/^(show |list )?(my )?(favou?rites|收藏)$|only favou?rites|from my favou?rites/.test(s))
+    return [['search_dishes',{favoritesOnly:true,limit:12}]];
+  if(/(un)?favou?rite|收藏|取消收藏/.test(s)){
+    for(const d of DISHES){
+      if(s.indexOf(d.n.toLowerCase())>=0 || (d.cn&&text.indexOf(d.cn)>=0))
+        return [['set_favorite',{dish:d.n, favorite:!/unfavou?rite|取消收藏/.test(s)}]];
+    }
+  }
   if(/where.*(order|delivery)|order status|when.*arrive|我的单|到哪了|送到没/.test(s)) return [['get_order_status',{}]];
   if(/used up|ran out of|out of |throw(n)? out|用完|吃完|没有了/.test(s)){
     const m=s.replace(/^.*?(used up|ran out of|out of |用完了?|吃完了?)\s*(the |my )?/,'').replace(/[.。!]/g,'');
@@ -1184,8 +1388,10 @@ function route(text){
   }
   if(/what.*(have|kitchen)|my kitchen|库存/.test(s)) return [['get_kitchen',{}]];
   if(/i have |我有/.test(s)){
-    const raw=s.split(/i have |我有/)[1].split(/[.。,;]| plan | and cook /)[0];
-    const items=raw.split(/,| and |、/).map(x=>x.trim()).filter(Boolean);
+    const raw=text.split(/i have |我有/i)[1].split(/[.。;；]| plan | and cook /)[0];
+    /* Chinese joins list items with 和 / 跟 / 、 and a full-width comma, none of
+       which the English split caught — "花椒和豆瓣酱" arrived as one name. */
+    const items=raw.split(/,|，|、|\s+and\s+|和|跟/).map(x=>x.trim()).filter(Boolean);
     return [['add_to_kitchen',{items:items.map(i=>({item:i}))}]];
   }
   const mm=s.match(/under (\d+)|(\d+)\s*min|少于\s*(\d+)/);
@@ -1260,6 +1466,10 @@ function confirmSheet(cart){
           '<div class="badge">Human confirmation required</div>'+
           '<h3>Find these products on Shopify?</h3>'+
           '<p>Requested by an agent via <code>checkout()</code>. Review the list before a live catalog search.</p>'+
+          '<p style="margin-top:6px;font-size:11.5px;color:var(--muted)">'+
+            'This searches the store catalog and hands you the results. '+
+            '<b style="color:var(--text)">Nothing is ordered and nothing is charged here</b> — '+
+            'you review the products and complete any purchase on the store\'s own page.</p>'+
         '</div>'+
         '<div class="mb">'+
           cart.lines.map(l=>'<div class="mrow"><span>'+l.name+' <span class="q">'+l.packs+'× '+l.packLabel+'</span></span><span class="p">'+money(l.price)+'</span></div>').join('')+
@@ -1324,13 +1534,17 @@ function renderKitchen(){
   const box=$('kitchenBody'); const groups={ingredient:[],seasoning:[],cookware:[]};
   for(const k in S.kitchen){ const c=CATALOG[k]; if(c&&S.kitchen[k]>0) groups[c.cat].push(k); }
   $('kCount').textContent=groups.ingredient.length+groups.seasoning.length+groups.cookware.length;
-  const titles={ingredient:'Ingredients',seasoning:'Seasonings',cookware:'Cookware'};
+  const titles={ingredient:'Ingredients 食材',seasoning:'Seasonings 调料',cookware:'Cookware 厨具'};
   box.innerHTML=['ingredient','seasoning','cookware'].map(cat=>{
     const list=groups[cat].sort((a,b)=>CATALOG[a].n.localeCompare(CATALOG[b].n));
     return '<div class="kgroup"><h4>'+titles[cat]+' <span>'+list.length+'</span></h4>'+
-      (list.length?list.map(k=>'<div class="kitem"><span class="ic t-'+CATALOG[k].icon+'">'+ic(CATALOG[k].icon,16)+'</span>'+
-        '<span class="nm">'+CATALOG[k].n+'</span>'+
-        '<span class="qt">'+(cat==='cookware'?'✓':qty(S.kitchen[k],CATALOG[k].u))+'</span></div>').join('')
+      (list.length?list.map(k=>'<div class="kitem" data-k="'+k+'"><span class="ic t-'+CATALOG[k].icon+'">'+ic(CATALOG[k].icon,16)+'</span>'+
+        '<span class="nm">'+CATALOG[k].n+(CATALOG[k].cn?'<i>'+CATALOG[k].cn+'</i>':'')+'</span>'+
+        '<span class="qt">'+(cat==='cookware'?'✓':qty(S.kitchen[k],CATALOG[k].u))+'</span>'+
+        '<span class="kact">'+
+          (cat==='cookware'?'':'<button class="kbtn" data-edit="'+k+'" title="Edit amount" aria-label="Edit amount">'+ic('pencil',13)+'</button>')+
+          '<button class="kbtn" data-del="'+k+'" title="Remove" aria-label="Remove">'+ic('trash',13)+'</button>'+
+        '</span></div>').join('')
        :'<div class="empty">nothing yet</div>')+'</div>';
   }).join('');
 }
@@ -1338,7 +1552,19 @@ function renderKitchen(){
 function renderMenu(){
   const m=$('menu');
   $('wCount').textContent=S.week.length+(S.week.length===1?' dish':' dishes');
-  m.innerHTML=DISHES.map(d=>{
+
+  const nFav=S.favorites.length;
+  if(!nFav) S.favOnly=false;
+  const ff=$('favFilter');
+  ff.querySelector('.hi').innerHTML=ic(nFav?'heartFull':'heart',13);
+  ff.querySelector('.ct').textContent=nFav?('Favourites '+nFav):'Favourites';
+  ff.classList.toggle('has', nFav>0 && !S.favOnly);
+  ff.setAttribute('aria-pressed', String(S.favOnly));
+  ff.disabled = nFav===0;
+
+  const shown = S.favOnly ? DISHES.filter(d=>isFav(d.id)) : DISHES;
+  if(!shown.length){ m.innerHTML='<div class="menu-empty">No favourites yet — tap the heart on a dish.</div>'; return; }
+  m.innerHTML=shown.map(d=>{
     const on=S.week.indexOf(d.id)>=0;
     const keys=Object.keys(d.need);
     const miss=keys.filter(k=>(S.kitchen[k]||0)<d.need[k]).length;
@@ -1346,8 +1572,12 @@ function renderMenu(){
     const cu=CUISINE[d.cuisine]||{label:String(d.cuisine||'').toUpperCase()};
     return '<span class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'" role="button" tabindex="0">'+
       '<span class="shot"><span class="fb">'+ic(d.glyph,40)+'</span>'+
-        (d.image?'<img src="'+escapeHTML(d.image)+'" alt="'+escapeHTML(d.n)+'" loading="lazy" onerror="this.remove()">':
-          (d.generated?'':'<img src="dishes/'+d.id+'.jpg" alt="" loading="lazy" onerror="this.remove()">'))+
+        '<button class="fav'+(isFav(d.id)?' on':'')+'" data-fav="'+d.id+'" title="'+(isFav(d.id)?'Remove from favourites':'Add to favourites')+'" aria-label="'+(isFav(d.id)?'Remove from favourites':'Add to favourites')+'" aria-pressed="'+isFav(d.id)+'">'+ic(isFav(d.id)?'heartFull':'heart',17)+'</button>'+
+        /* A real generated photograph when the image model produced one; the
+           drawn plate when it did not, so a card is never an empty box. */
+        (d.image
+          ? '<img src="'+escapeHTML(d.image)+'" alt="'+escapeHTML(d.n)+'" loading="lazy" onerror="this.remove()">'
+          : '<span class="ph" style="background-image:url(&apos;'+(d.generated?plateSvg(d):'dishes/'+d.id+'.jpg')+'&apos;)"></span>')+
       '</span>'+
       '<span class="pad">'+
         '<span class="cui">'+cu.label+(d.generated?' · AI':'')+'</span>'+
@@ -1471,9 +1701,8 @@ function renderCart(){
       '</div>';
   }
   if(S.week.length){
-    html+='<div class="stat"><div><div class="k">Requests</div><div class="v">'+c.tree.rawRequests+
-      ' <small>/ '+S.week.length+' dishes</small></div></div>'+
-      '<div><div class="k">To buy</div><div class="v">'+c.mergedLines+' <small>items</small></div></div></div>';
+    html+='<div class="stat one"><div><div class="k">To buy</div><div class="v">'+c.mergedLines+
+      ' <small>items · merged from '+S.week.length+' dish'+(S.week.length>1?'es':'')+'</small></div></div></div>';
   }
   html+= c.lines.length ? c.lines.map(l=>
     '<div class="line" data-line="'+l.id+'"><span class="ic t-'+l.icon+'">'+ic(l.icon,18)+'</span>'+
@@ -1486,7 +1715,7 @@ function renderCart(){
 
 function renderAccount(){
   $('acct').innerHTML =
-    '<h4>Account '+ic('lock',12)+'<b>0 tools</b></h4>'+
+    '<h4>Account '+ic('lock',12)+'<b>0 of these are tools</b></h4>'+
     '<div class="grid">'+ACCOUNT.map(a=>'<div class="arow" data-acct="'+a.id+'">'+
       '<span class="nm">'+a.label+'</span>'+
       '<span class="vl">'+a.value+'</span></div>').join('')+'</div>'+
@@ -1505,7 +1734,10 @@ function flashAccount(toolName){
 function render(){ renderKitchen(); renderMenu(); renderTree(); renderCart(); }
 
 /* ============ 10. EVENTS ============ */
+$('favFilter').addEventListener('click',()=>{ S.favOnly=!S.favOnly; render(); });
 $('menu').addEventListener('click',e=>{
+  const fav=e.target.closest('[data-fav]');
+  if(fav){ e.stopPropagation(); invoke('set_favorite',{dish:fav.dataset.fav},'ui'); return; }
   const step=e.target.closest('[data-port]');
   if(step){
     e.stopPropagation();
@@ -1544,6 +1776,29 @@ $('cartBody').addEventListener('click',e=>{
   if(l) invoke('explain_shortage',{item:l.dataset.line},'ui');
 });
 $('checkoutBtn').addEventListener('click',()=>invoke('checkout',{},'ui'));
+$('kitchenBody').addEventListener('click',e=>{
+  const del=e.target.closest('[data-del]');
+  if(del){ invoke('remove_from_kitchen',{items:[{item:del.dataset.del}]},'ui'); return; }
+  const ed=e.target.closest('[data-edit]');
+  if(ed){
+    const k=ed.dataset.edit, row=ed.closest('.kitem');
+    if(row.querySelector('.kedit')) return;
+    const cur=S.kitchen[k]||0;
+    const inp=document.createElement('input');
+    inp.className='kedit'; inp.value=cur; inp.setAttribute('aria-label','Amount for '+CATALOG[k].n);
+    row.querySelector('.kact').replaceWith(inp); inp.focus(); inp.select();
+    const commit=()=>{
+      const v=parseFloat(inp.value); inp.onblur=null;
+      if(!isFinite(v)||v<0||v===cur){ render(); return; }
+      /* No new tool for this: an edit is a delta, and the two inventory tools
+         already express both directions. */
+      if(v>cur) invoke('add_to_kitchen',{items:[{item:k,qty:v-cur}]},'ui');
+      else      invoke('remove_from_kitchen',{items:[{item:k,qty:cur-v}]},'ui');
+    };
+    inp.onblur=commit;
+    inp.onkeydown=ev=>{ if(ev.key==='Enter') commit(); if(ev.key==='Escape'){ inp.onblur=null; render(); } };
+  }
+});
 $('addBtn').addEventListener('click',()=>{
   const v=$('addName').value.trim(); if(!v) return;
   const q=parseFloat(($('addQty').value||'').replace(/[^0-9.]/g,''));
@@ -1557,7 +1812,8 @@ $('menu').addEventListener('keydown',e=>{
   if(b && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); b.click(); }
 });
 $('demoBtn').addEventListener('click',()=>{
-  S.kitchen=Object.assign({},DEMO_KITCHEN);
+  loadFavorites();
+S.kitchen=Object.assign({},DEMO_KITCHEN);
   logRow('usr','$ load demo kitchen'); render();
 });
 $('genBtn').addEventListener('click',async()=>{
@@ -1611,6 +1867,7 @@ $('toolCount').textContent=TOOLS.length+' tools registered';
   $('wDates').textContent='· '+f(mon)+' – '+f(sun);
 })();
 renderAccount();
+loadFavorites();
 S.kitchen=Object.assign({},DEMO_KITCHEN);
 registerWebMCP();
 render();
