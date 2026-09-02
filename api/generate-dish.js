@@ -128,6 +128,7 @@ module.exports = async (req, res) => {
           { role: 'user', content: description },
         ],
         response_format: { type: 'json_object' },
+        reasoning: { enabled: false },
         temperature: 0.4,
         max_tokens: 700,
       }),
