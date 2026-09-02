@@ -3,7 +3,7 @@
 CookTree is still a static site (`index.html`, no build step). The only
 addition is one serverless function, `api/generate-dish.js`, which holds the
 OpenRouter key server-side and turns a free-text dish description into a real,
-plannable dish using `deepseek/deepseek-v4-flash` through OpenRouter.
+plannable dish using `deepseek/deepseek-v4-flash-0731:nitro` through OpenRouter.
 
 The key never reaches the browser or the repo — it lives only as an
 encrypted Vercel environment variable.

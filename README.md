@@ -121,7 +121,7 @@ a human. That ratio is the design, not an accident.
 | `remove_dish` | Drop a dish — returns what vanishes and what shrinks | a draft gets messy |
 | `explain_shortage` | Why is this on my list, who needs it, substitutes | nothing happens |
 | `get_order_status` | Where is the order **this agent placed** | nothing happens |
-| `generate_dish` | Free text → a real dish (ingredients, qty, cook time) via OpenRouter's `deepseek/deepseek-v4-flash`, merged into the same engine as the built-in 8 | a few extra catalog rows |
+| `generate_dish` | Free text → a real dish (ingredients, qty, cook time) via OpenRouter's `deepseek/deepseek-v4-flash-0731:nitro`, merged into the same engine as the built-in 8 | a few extra catalog rows |
 | `checkout` | **Human-gated + capped.** Card never enters the tool result | money moves — so it stops |
 
 `generate_dish` calls `/api/generate-dish`, a one-endpoint Vercel Function that holds the

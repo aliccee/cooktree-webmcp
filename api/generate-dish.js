@@ -39,7 +39,7 @@ Rules:
 - qty is realistic for the stated "serves" count.
 - Return nothing but the JSON object.`;
 
-const MODEL = 'deepseek/deepseek-v4-flash';
+const MODEL = 'deepseek/deepseek-v4-flash-0731:nitro';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_DESC_LEN = 300;
 
