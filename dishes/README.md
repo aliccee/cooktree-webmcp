@@ -1,6 +1,10 @@
 # Dish photos
 
-Drop eight JPEGs here, named exactly:
+Eight illustrations live here already — flat top-down plates drawn to match the
+page's palette. Replace any of them with a photograph at the same filename and
+the card picks it up; a missing file falls back to the line drawing.
+
+Filenames:
 
 | file | dish |
 |---|---|
@@ -20,3 +24,10 @@ Any file that is missing simply falls back to the line drawing. Nothing breaks.
 
 Source them somewhere the licence is clear — Unsplash and Pexels both allow free
 commercial use with no attribution required.
+
+
+## Regenerating
+
+`generator.html` draws all eight from a seeded config — open it and screenshot
+each `.plate`, or edit a dish's colours and shape counts in the `DISHES` object
+at the top. Same seed, same picture, every time.

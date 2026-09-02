@@ -1,0 +1,137 @@
+<!doctype html><meta charset="utf-8">
+<style>
+  body{margin:0;background:#888;font:12px sans-serif}
+  .plate{width:800px;height:500px;position:relative;overflow:hidden}
+  svg{display:block}
+</style>
+<div id="out"></div>
+<script>
+/* Seeded RNG so every render is identical */
+function rng(seed){let s=seed>>>0;return()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return((s>>>0)%100000)/100000;};}
+
+const BG = '#EFEBE3';       // warm paper, matches the app
+const PLATE = '#FBF9F5';
+const RIM   = '#E2DCD1';
+
+/* Each dish: bowl tone, the sauce/base mass, and the pieces sitting in it. */
+const DISHES = {
+  beefstew:{seed:11, bowl:'#FFFDFA', base:['#B0421F','#8E3216'], depth:'#6E2410',
+    chunks:[{c:'#7A3A20',n:7,r:[26,38]},{c:'#C4482A',n:6,r:[20,30]},{c:'#D9663A',n:4,r:[14,22]}],
+    herbs:'#5E6B3A', herbN:14, steam:true},
+  mapo:{seed:22, bowl:'#FFFDFA', base:['#C0341F','#9E2614'], depth:'#7C1C0E',
+    chunks:[{c:'#F5EEDC',n:9,r:[22,30],square:true},{c:'#8E3A20',n:7,r:[12,18]}],
+    herbs:'#5F7A32', herbN:16, steam:true},
+  curry:{seed:33, bowl:'#FFFDFA', base:['#7E9A4E','#5F7C36'], depth:'#4A6428',
+    chunks:[{c:'#E8DCA8',n:6,r:[24,34]},{c:'#4C3A52',n:5,r:[18,28]},{c:'#C9B77A',n:4,r:[14,20]}],
+    herbs:'#3E6B2E', herbN:12, leaf:true, steam:true},
+  friedrice:{seed:44, bowl:'#FBF9F5', base:['#E5C983','#D4B267'], depth:'#BF9C52', flat:true,
+    chunks:[{c:'#F2D98F',n:0,r:[0,0]},{c:'#E8A33C',n:9,r:[10,16]},{c:'#C87E3E',n:6,r:[14,20]}],
+    herbs:'#5F7A32', herbN:20, grain:true},
+  bolognese:{seed:55, bowl:'#FBF9F5', base:['#EBD9A8','#DCC488'], depth:'#C8AE70', noodle:true,
+    chunks:[{c:'#A83A22',n:8,r:[22,34]},{c:'#8A2C18',n:5,r:[16,24]}],
+    herbs:'#5E6B3A', herbN:10, cheese:true},
+  steamfish:{seed:66, bowl:'#FBF9F5', base:['#EFE7DA','#E2D7C6'], depth:'#CFC2AC', oval:true, fish:true,
+    chunks:[], herbs:'#5F7A32', herbN:30, ginger:'#E0C271'},
+  broccoli:{seed:77, bowl:'#FBF9F5', base:['#F2EFE8','#E8E3D8'], depth:'#D8D2C4', flat:true,
+    chunks:[{c:'#4F7A34',n:16,r:[46,66],floret:true},{c:'#3F6528',n:9,r:[36,52],floret:true},{c:'#6B9448',n:7,r:[30,44],floret:true}],
+    herbs:'#E8D9A0', herbN:14},
+  eggdrop:{seed:88, bowl:'#FFFDFA', base:['#F0DFA8','#E3CE8C'], depth:'#D2B96E',
+    chunks:[{c:'#FBF3D8',n:8,r:[18,30],ribbon:true}], herbs:'#5F7A32', herbN:16, steam:true}
+};
+
+function blob(cx,cy,r,wob,rnd,pts=14){
+  let d='';
+  for(let i=0;i<pts;i++){
+    const a=i/pts*Math.PI*2, rr=r*(1-wob/2+rnd()*wob);
+    const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
+    d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);
+  }
+  return d+'Z';
+}
+
+function draw(id,cfg){
+  const rnd=rng(cfg.seed), W=800,H=500, cx=W/2, cy=H/2;
+  const R = cfg.oval? 300 : 262;
+  const RY = cfg.oval? 200 : 248;
+  let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s+=`<defs>
+    <radialGradient id="g${id}" cx="42%" cy="34%"><stop offset="0" stop-color="${cfg.base[0]}"/><stop offset="1" stop-color="${cfg.base[1]}"/></radialGradient>
+    <radialGradient id="bg${id}" cx="50%" cy="42%"><stop offset="0" stop-color="#F6F2EA"/><stop offset="1" stop-color="${BG}"/></radialGradient>
+    <filter id="sh${id}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="soft${id}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6"/></filter>
+  </defs>`;
+  s+=`<rect width="${W}" height="${H}" fill="url(#bg${id})"/>`;
+  // cast shadow
+  s+=`<ellipse cx="${cx+8}" cy="${cy+16}" rx="${R+10}" ry="${RY+10}" fill="#B9B0A0" opacity=".38" filter="url(#sh${id})"/>`;
+  // plate / bowl
+  s+=`<ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${RY}" fill="${PLATE}"/>`;
+  s+=`<ellipse cx="${cx}" cy="${cy}" rx="${R-9}" ry="${RY-9}" fill="none" stroke="${RIM}" stroke-width="1.6"/>`;
+  const ir=R-(cfg.flat?70:54), iry=RY-(cfg.flat?70:54);
+
+  if(cfg.oval){ s+=`<ellipse cx="${cx}" cy="${cy}" rx="${ir}" ry="${iry}" fill="url(#g${id})"/>`; }
+  else if(cfg.noodle){
+    s+=`<ellipse cx="${cx}" cy="${cy}" rx="${ir}" ry="${iry}" fill="${cfg.depth}"/>`;
+    for(let i=0;i<44;i++){
+      const a=rnd()*Math.PI*2, rr=ir*(.2+rnd()*.66), r2=26+rnd()*46;
+      s+=`<circle cx="${cx+Math.cos(a)*rr}" cy="${cy+Math.sin(a)*rr}" r="${r2}" fill="none" stroke="url(#g${id})" stroke-width="${11+rnd()*6}" opacity=".95"/>`;
+    }
+  } else {
+    s+=`<ellipse cx="${cx}" cy="${cy}" rx="${ir+7}" ry="${iry+7}" fill="${cfg.depth}" opacity=".85"/>`;
+    s+=`<path d="${blob(cx,cy,ir,0.14,rnd,18)}" fill="url(#g${id})"/>`;
+  }
+
+  if(cfg.grain){
+    for(let i=0;i<420;i++){
+      const a=rnd()*Math.PI*2, rr=ir*Math.sqrt(rnd())*.95;
+      s+=`<ellipse cx="${cx+Math.cos(a)*rr}" cy="${cy+Math.sin(a)*rr}" rx="${5.5+rnd()*2.5}" ry="${3.2+rnd()*1.3}" fill="#F5E3B0" opacity="${.5+rnd()*.5}" transform="rotate(${rnd()*180} ${cx+Math.cos(a)*rr} ${cy+Math.sin(a)*rr})"/>`;
+    }
+  }
+  if(cfg.fish){
+    s+=`<path d="M${cx-232} ${cy} C${cx-170} ${cy-108} ${cx+110} ${cy-104} ${cx+196} ${cy} C${cx+110} ${cy+104} ${cx-170} ${cy+108} ${cx-232} ${cy} Z" fill="#F3EADC" stroke="#DFD2BC" stroke-width="2"/>`;
+    s+=`<path d="M${cx+128} ${cy} l78 -52 v104 z" fill="#EBE0CE" stroke="#DFD2BC" stroke-width="2"/>`;
+    for(let i=0;i<9;i++) s+=`<path d="M${cx-182+i*46} ${cy-52} q14 52 0 104" stroke="#E2D6C2" stroke-width="2" fill="none"/>`;
+    s+=`<circle cx="${cx-192}" cy="${cy-14}" r="7" fill="#5A5347"/>`;
+  }
+  (cfg.chunks||[]).forEach(g=>{
+    for(let i=0;i<g.n;i++){
+      const a=rnd()*Math.PI*2, rr=ir*Math.sqrt(rnd())*.82;
+      const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr*(cfg.oval?.68:1);
+      const r=g.r[0]+rnd()*(g.r[1]-g.r[0]);
+      if(g.square) s+=`<rect x="${x-r/2}" y="${y-r/2}" width="${r}" height="${r}" rx="3" fill="${g.c}" transform="rotate(${rnd()*90} ${x} ${y})" filter="url(#soft${id})"/>`;
+      else if(g.floret){ s+=`<circle cx="${x}" cy="${y}" r="${r*.5}" fill="${g.c}"/>`;
+        for(let k=0;k<6;k++){const b=rnd()*6.28;s+=`<circle cx="${x+Math.cos(b)*r*.36}" cy="${y+Math.sin(b)*r*.36}" r="${r*.24}" fill="${g.c}"/>`;}
+        s+=`<rect x="${x-4}" y="${y+r*.34}" width="8" height="${r*.4}" rx="3" fill="#CFCFA6"/>`; }
+      else if(g.ribbon) s+=`<path d="M${x-r} ${y} q${r*.5} ${-r*.7} ${r} 0 q${r*.5} ${r*.7} ${r} 0" stroke="${g.c}" stroke-width="${8+rnd()*5}" fill="none" stroke-linecap="round" opacity=".95"/>`;
+      else s+=`<path d="${blob(x,y,r/2,0.3,rnd,9)}" fill="${g.c}" filter="url(#soft${id})"/>`;
+    }
+  });
+  if(cfg.ginger) for(let i=0;i<10;i++){
+    const x=cx-150+rnd()*300, y=cy-70+rnd()*140;
+    s+=`<rect x="${x}" y="${y}" width="${34+rnd()*32}" height="5" rx="2" fill="${cfg.ginger}" transform="rotate(${rnd()*70-35} ${x} ${y})"/>`;
+  }
+  for(let i=0;i<(cfg.herbN||0);i++){
+    const a=rnd()*Math.PI*2, rr=ir*Math.sqrt(rnd())*.86;
+    const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr*(cfg.oval?.7:1);
+    if(cfg.leaf) s+=`<ellipse cx="${x}" cy="${y}" rx="13" ry="7" fill="${cfg.herbs}" transform="rotate(${rnd()*180} ${x} ${y})"/>`;
+    else s+=`<rect x="${x}" y="${y}" width="${9+rnd()*13}" height="3.4" rx="1.7" fill="${cfg.herbs}" transform="rotate(${rnd()*180} ${x} ${y})"/>`;
+  }
+  if(cfg.cheese) for(let i=0;i<40;i++){
+    const a=rnd()*Math.PI*2, rr=ir*Math.sqrt(rnd())*.8;
+    s+=`<rect x="${cx+Math.cos(a)*rr}" y="${cy+Math.sin(a)*rr}" width="9" height="2.6" rx="1.3" fill="#F7F0DA" opacity=".95" transform="rotate(${rnd()*180} ${cx} ${cy})"/>`;
+  }
+  if(cfg.steam) for(let i=0;i<3;i++){
+    const x=cx-72+i*72;
+    s+=`<path d="M${x} ${cy-ir-14} q18 -28 0 -54 q-18 -26 0 -50" stroke="#FFFFFF" stroke-width="7" fill="none" opacity=".34" stroke-linecap="round"/>`;
+  }
+  // rim highlight
+  s+=`<ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${RY}" fill="none" stroke="#FFFFFF" stroke-width="2" opacity=".5"/>`;
+  return s+'</svg>';
+}
+
+const out=document.getElementById('out');
+Object.entries(DISHES).forEach(([id,cfg])=>{
+  const d=document.createElement('div');
+  d.className='plate'; d.id='p-'+id; d.innerHTML=draw(id,cfg);
+  out.appendChild(d);
+});
+</script>

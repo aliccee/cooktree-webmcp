@@ -321,45 +321,45 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
    ============================================================ */
 .console{
   flex:none;background:var(--console-bg);color:var(--console-fg);border-top:1px solid var(--border-2);
-  display:flex;flex-direction:column;height:246px;transition:height .22s cubic-bezier(.3,0,.2,1)
+  display:flex;flex-direction:column;height:290px;transition:height .22s cubic-bezier(.3,0,.2,1)
 }
 .console.collapsed{height:44px}
 .chead{
   flex:none;display:flex;align-items:center;gap:10px;height:44px;padding:0 16px;
   border-bottom:1px solid var(--console-line)
 }
-.chead .t{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--console-fg)}
-.chead .tools{font-family:var(--mono);font-size:11px;color:var(--console-dim)}
+.chead .t{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--console-fg)}
+.chead .tools{font-family:var(--mono);font-size:12px;color:var(--console-dim)}
 .chead button{color:var(--console-dim);font-size:11px}
 .chead button:hover{color:var(--console-fg)}
 .cbody{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 268px}
-.clog{overflow-y:auto;padding:10px 16px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.65}
+.clog{overflow-y:auto;padding:12px 20px 16px;font-family:var(--mono);font-size:14.5px;line-height:1.72;letter-spacing:.01em}
 .clog .row{display:flex;gap:8px;white-space:pre-wrap;word-break:break-word}
 .clog .req{color:#E9E5DF;font-weight:500}
-.clog .res{color:var(--console-dim)}
+.clog .res{color:#D6D1C8}
 .clog .wait{color:#D9A441}
 .clog .usr{color:#C9A227}
 .clog .err{color:#FF5C77;font-weight:500}
-.clog .ms{color:#5D584F;margin-left:auto;flex:none;padding-left:10px}
+.clog .ms{color:#6A655C;margin-left:auto;flex:none;padding-left:14px;font-size:12.5px}
 .clog .grp{border-left:1px solid var(--console-line);padding-left:10px;margin:6px 0 6px 2px}
-.clog .cmp{color:#5D584F;font-style:italic}
+.clog .cmp{color:#8B857A;font-style:italic}
 .cside{border-left:1px solid var(--console-line);display:flex;flex-direction:column;min-height:0}
 .cside .lbl{padding:12px 14px 8px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--console-dim);font-weight:700}
 .chips{padding:0 12px 10px;display:grid;gap:5px;overflow-y:auto}
 .chip{
-  text-align:left;border:1px solid var(--console-line);border-radius:0;padding:7px 10px;
-  font-size:11.5px;color:var(--console-fg);line-height:1.4;background:transparent
+  text-align:left;border:1px solid var(--console-line);border-radius:0;padding:8px 11px;
+  font-size:13px;color:var(--console-fg);line-height:1.4;background:transparent
 }
 .chip:hover{background:rgba(255,255,255,.07);border-color:#3C3934}
 .chip b{display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#C9A227;font-weight:700;margin-bottom:3px}
 .cinput{flex:none;border-top:1px solid var(--console-line);display:flex;gap:8px;padding:9px 16px}
 .cinput input{
   flex:1;background:transparent;border:1px solid var(--console-line);border-radius:0;
-  height:32px;padding:0 11px;color:var(--console-fg);font-family:var(--mono);font-size:12px
+  height:36px;padding:0 12px;color:var(--console-fg);font-family:var(--mono);font-size:14px
 }
 .cinput input::placeholder{color:#5D584F}
 .cinput input:focus{outline:none;border-color:#4C4740}
-.cinput .go{background:var(--console-fg);color:var(--console-bg);border-radius:0;height:32px;padding:0 16px;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.cinput .go{background:var(--console-fg);color:var(--console-bg);border-radius:0;height:36px;padding:0 16px;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 
 /* ============================================================
    MODAL
