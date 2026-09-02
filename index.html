@@ -6,17 +6,17 @@
 <title>CookTree — agent-native meal planning</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* ============================================================
    TOKENS — guide-style: warm paper, hairlines, square corners,
    one red used only where it matters.
    ============================================================ */
 :root{
-  --bg:#FAF8F5; --surface:#FFFFFF; --surface-2:#F3F1EC; --border:#E4E0DA;
+  --bg:#FAF7F1; --surface:#FFFDFA; --surface-2:#F3F0E9; --border:#E5E0D7;
   --border-2:#CBC6BD;
-  --text:#1A1A18; --muted:#6E6B66; --faint:#9C9891;
-  --brand:#1A1A18; --brand-soft:#F3F1EC;
+  --text:#191714; --muted:#6C685F; --faint:#9B968C;
+  --brand:#191714; --brand-soft:#F3F0E9;
   --red:#C1002B;
   --have:#94908A; --have-soft:#F3F1EC;
   --short:#C1002B; --short-soft:#FBF0F2;
@@ -25,10 +25,11 @@
   --shadow:none;
   --radius:0px;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --serif:"Newsreader",Georgia,"Songti SC","Noto Serif CJK SC",serif;
   --sans:"Mulish",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#141311; --surface:#1C1B18; --surface-2:#232220; --border:#302E2A;
+  --bg:#131210; --surface:#1B1A17; --surface-2:#22211E; --border:#312E29;
   --border-2:#413E39;
   --text:#F2EFE9; --muted:#9C978F; --faint:#6F6B65;
   --brand:#F2EFE9; --brand-soft:#232220;
@@ -41,7 +42,10 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0; background:var(--bg); color:var(--text);
+  margin:0;
+  background-color:var(--bg);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+  color:var(--text);
   font:14px/1.55 var(--sans);letter-spacing:.005em; -webkit-font-smoothing:antialiased;
   display:flex; flex-direction:column; overflow:hidden;
 }
@@ -92,6 +96,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 }
 .panel-head::before{content:"";position:absolute;top:10px;left:18px;width:26px;height:2px;background:var(--red)}
 .panel-head{padding-top:24px}
+.panel-head .dates{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:none;font-weight:400;color:var(--faint);margin-left:2px}
 .panel-head .count{
   margin-left:auto;font-size:10.5px;letter-spacing:.04em;text-transform:none;font-weight:500;
   font-family:var(--mono);border:none;padding:0;color:var(--faint)
@@ -113,7 +118,8 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 }
 .kitem:hover .nm{color:var(--red)}
 .kitem .ic{color:var(--muted);flex:none;display:grid;place-items:center}
-.kitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--serif);font-size:14.5px}
 .kitem .qt{font-family:var(--mono);font-size:11px;color:var(--faint)}
 .empty{font-size:12px;color:var(--faint);padding:4px 8px;font-style:italic}
 .addrow{display:flex;gap:6px;margin-top:8px}
@@ -133,25 +139,40 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .btn.wide{width:100%;height:38px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
+/* Identity tint — what kind of food this is. Deliberately desaturated, and
+   always outranked by the red "you are short" state (higher specificity). */
+.ic.t-leaf,.line .ic.t-leaf{color:#6E7C4E}
+.ic.t-meat,.line .ic.t-meat{color:#9A5A55}
+.ic.t-fish,.line .ic.t-fish{color:#5B7683}
+.ic.t-egg,.ic.t-dairy,.line .ic.t-egg,.line .ic.t-dairy{color:#B08D3F}
+.ic.t-grain,.ic.t-noodle,.line .ic.t-grain,.line .ic.t-noodle{color:#A08048}
+.ic.t-bottle,.ic.t-spice,.line .ic.t-bottle,.line .ic.t-spice{color:#8A6A45}
+[data-theme="dark"] .ic.t-leaf,[data-theme="dark"] .line .ic.t-leaf{color:#9CAE78}
+[data-theme="dark"] .ic.t-meat,[data-theme="dark"] .line .ic.t-meat{color:#C88A84}
+[data-theme="dark"] .ic.t-fish,[data-theme="dark"] .line .ic.t-fish{color:#8AAABA}
+[data-theme="dark"] .ic.t-egg,[data-theme="dark"] .ic.t-dairy,[data-theme="dark"] .line .ic.t-egg,[data-theme="dark"] .line .ic.t-dairy{color:#DCBB6E}
+[data-theme="dark"] .ic.t-grain,[data-theme="dark"] .ic.t-noodle,[data-theme="dark"] .line .ic.t-grain,[data-theme="dark"] .line .ic.t-noodle{color:#CBA974}
+[data-theme="dark"] .ic.t-bottle,[data-theme="dark"] .ic.t-spice,[data-theme="dark"] .line .ic.t-bottle,[data-theme="dark"] .line .ic.t-spice{color:#B79470}
+
 /* ============================================================
    ACCOUNT — what the site holds but never registered
    ============================================================ */
-.acct{flex:none;border-top:1px solid var(--border-2);padding:16px 18px 18px;background:var(--surface-2)}
+.acct{flex:none;border-bottom:1px solid var(--border-2);padding:20px 18px 16px;background:var(--surface-2)}
+.acct .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:11px}
 .acct h4{
   margin:0 0 9px;font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
   color:var(--text);display:flex;align-items:center;gap:6px;font-family:var(--mono)
 }
 .acct h4 b{margin-left:auto;font-weight:500;color:var(--red);letter-spacing:.06em;font-size:9.5px}
 .acct .arow{
-  display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px dashed var(--border);
-  font-size:12px;color:var(--faint);transition:.2s
+  display:block;padding:0;font-size:12px;color:var(--faint);transition:.2s
 }
-.acct .arow .lk{flex:none;display:grid;place-items:center;opacity:.8}
-.acct .arow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.acct .arow .vl{font-family:var(--mono);font-size:10.5px;flex:none}
+.acct .arow .lk{display:none}
+.acct .arow .nm{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.acct .arow .vl{display:block;font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--muted)}
+.acct .arow.hit .nm,.acct .arow.hit .vl{color:var(--red)}
 .acct .arow.hit{
-  color:var(--red);border-bottom-color:var(--red);
-  box-shadow:inset 3px 0 0 var(--red);padding-left:9px;
+  color:var(--red);box-shadow:-9px 0 0 var(--short-soft),inset 0 0 0 99px var(--short-soft);
   animation:acctpulse 2.6s ease-out
 }
 @keyframes acctpulse{0%{transform:translateX(0)}8%{transform:translateX(-3px)}16%{transform:translateX(3px)}24%{transform:translateX(0)}}
@@ -163,21 +184,41 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .menu-wrap{flex:none;border-bottom:1px solid var(--border);background:var(--bg)}
 .menu{display:flex;align-items:stretch;gap:10px;overflow-x:auto;padding:14px 22px 18px;scrollbar-width:thin}
 .dish{
-  flex:none;width:172px;text-align:left;padding:14px 15px 13px;border:1px solid var(--border);
+  flex:none;width:186px;text-align:left;padding:0 0 13px;border:1px solid var(--border);
   border-radius:0;background:var(--surface);transition:.14s;position:relative;overflow:hidden;
   display:flex;flex-direction:column
 }
 .dish:hover{border-color:var(--text)}
 .dish[data-on="1"]{border-color:var(--text);background:var(--surface)}
-.dish[data-on="1"]::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--red)}
+.dish[data-on="1"]::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--red);z-index:3}
 .dish .bar{display:none}
+.dish .shot{
+  position:relative;display:block;width:100%;aspect-ratio:16/10;overflow:hidden;
+  background:var(--surface-2);border-bottom:1px solid var(--border);flex:none
+}
+.dish .shot img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;display:block;
+  filter:saturate(1.02) contrast(1.02);transition:transform .5s cubic-bezier(.2,.7,.3,1)}
+.dish:hover .shot img{transform:scale(1.045)}
+.dish .shot .fb{position:absolute;inset:0;display:grid;place-items:center;color:var(--border-2)}
+.dish .pad{padding:13px 15px 0;display:flex;flex-direction:column;flex:1}
 .dish .cui{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
 .dish .top{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
-.dish .glyph{width:22px;height:22px;border-radius:0;display:grid;place-items:center;flex:none;color:var(--text);opacity:.62}
-.dish .nm{display:block;font-size:13.5px;font-weight:700;line-height:1.22;letter-spacing:-.005em}
-.dish .cn{display:block;font-size:11px;color:var(--muted);margin-top:2px;font-weight:400}
+.dish .glyph{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--border-2);
+  display:grid;place-items:center;flex:none;color:var(--muted);opacity:1;transition:.18s
+}
+.dish:hover .glyph,.dish[data-on="1"] .glyph{border-color:var(--red);color:var(--red)}
+.dish .nm{display:block;font-family:var(--serif);font-size:17px;font-weight:600;line-height:1.16;letter-spacing:-.01em}
+.dish .cn{display:block;font-family:var(--serif);font-size:12.5px;color:var(--muted);margin-top:3px;font-weight:400}
 .dish .top>span:last-child{min-width:0;flex:1}
-.dish .meta{display:flex;align-items:center;gap:7px;margin-top:auto;font-size:9.5px;color:var(--faint);
+.dish{cursor:pointer}
+.dish .portions{display:flex;align-items:center;gap:8px;margin:10px 15px 0;padding-top:9px;border-top:1px solid var(--border)}
+.dish .portions .pl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);flex:1}
+.dish .portions .step{display:flex;align-items:center;border:1px solid var(--border-2)}
+.dish .portions .pm{width:24px;height:22px;font-size:13px;line-height:1;color:var(--muted);display:grid;place-items:center}
+.dish .portions .pm:hover{background:var(--text);color:var(--bg)}
+.dish .portions .pv{min-width:26px;text-align:center;font-family:var(--mono);font-size:12px;font-weight:500;border-left:1px solid var(--border-2);border-right:1px solid var(--border-2);height:22px;line-height:22px}
+.dish .meta{display:flex;align-items:center;gap:7px;margin:auto 15px 0;font-size:9.5px;color:var(--faint);
   font-family:var(--mono);letter-spacing:.09em;border-top:1px solid var(--border);padding-top:9px}
 .dish .miss{color:var(--red);font-weight:500}
 .dish .ok{color:var(--faint)}
@@ -194,7 +235,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .legend i{display:inline-block;width:14px;height:2px;margin-right:7px;vertical-align:3px}
 .tree-bar::before{content:"";position:absolute;top:10px;left:22px;width:26px;height:2px;background:var(--red)}
 .tree-scroll{flex:1;overflow:auto;padding:4px 22px 28px}
-.tree{position:relative;display:grid;grid-template-columns:minmax(150px,222px) minmax(90px,300px) minmax(170px,246px);gap:0;align-items:start;max-width:800px}
+.tree{position:relative;display:grid;grid-template-columns:minmax(170px,258px) minmax(80px,270px) minmax(180px,262px);gap:0;align-items:start;max-width:840px}
 .tree .edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .tcol{display:flex;flex-direction:column;gap:7px;position:relative;z-index:1}
 .tcol.mid{pointer-events:none}
@@ -205,8 +246,9 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   border-radius:0;background:var(--surface);font-size:12.5px;transition:.14s;text-align:left;width:100%
 }
 .tnode.dish{padding:11px 12px}
-.tnode .glyph{width:18px;height:18px;border-radius:0;display:grid;place-items:center;flex:none;color:var(--text);opacity:.6}
-.tnode .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.tnode .glyph{width:26px;height:26px;border-radius:50%;border:1px solid var(--border-2);display:grid;place-items:center;flex:none;color:var(--muted)}
+.tnode .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--serif);font-size:14.5px;font-weight:500;letter-spacing:-.005em}
 .tnode .qt{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex:none}
 .tnode.item.have{border-color:var(--border);background:transparent;color:var(--muted)}
 .tnode.item.have .ic{color:var(--faint);opacity:.7}
@@ -223,10 +265,11 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 @keyframes fadeout{to{opacity:0;transform:translateX(10px)}}
 .pulse{position:relative}
 .tree-empty{
-  border:1px solid var(--border);border-radius:0;padding:56px 20px;text-align:center;
-  color:var(--faint);font-size:13px;background:var(--surface)
+  border:1px solid var(--border);border-radius:0;padding:44px 20px 52px;text-align:center;
+  color:var(--faint);font-size:13px;line-height:1.75;background:var(--surface)
 }
-.tree-empty b{display:block;color:var(--text);font-size:16px;font-weight:700;margin-bottom:6px}
+.tree-empty .setting{width:200px;height:88px;color:var(--border-2);margin:0 auto 20px;display:block}
+.tree-empty b{display:block;color:var(--text);font-family:var(--serif);font-size:22px;font-weight:500;margin-bottom:8px;letter-spacing:-.01em}
 
 /* ============================================================
    CART
@@ -249,17 +292,28 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .line:hover .nm{color:var(--red)}
 .line .ic{color:var(--muted);flex:none;display:grid;place-items:center}
 .line .body{flex:1;min-width:0}
-.line .nm{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:.12s}
+.line .nm{font-family:var(--serif);font-size:15.5px;font-weight:500;letter-spacing:-.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:.12s}
 .line .sub{font-size:11px;color:var(--faint);font-family:var(--mono)}
 .line .pr{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;font-weight:500}
+.kitcheck .kh{display:flex;align-items:center;gap:7px;color:var(--warn);font-size:12px;margin-bottom:3px}
+.kitcheck .kh b{font-weight:700}
+.kitcheck .kb{color:var(--faint);font-size:11.5px;margin-bottom:9px}
+.kitcheck .kopt{display:flex;align-items:center;gap:9px;padding:8px 9px;border:1px solid var(--border);background:var(--surface-2)}
+.kitcheck .kopt .ic{color:var(--muted);flex:none;display:grid;place-items:center}
+.kitcheck .kn{flex:1;min-width:0;font-family:var(--serif);font-size:14px;font-weight:500;line-height:1.2}
+.kitcheck .kn small{display:block;font-family:var(--sans);font-size:10px;color:var(--faint);font-weight:400;margin-top:1px}
+.kitcheck .kp{font-family:var(--mono);font-size:12px;font-weight:500}
+.kitcheck .kadd{border:1px solid var(--text);background:var(--text);color:var(--bg);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px}
+.kitcheck .kadd:hover{background:var(--red);border-color:var(--red);color:#fff}
+.kitcheck .kdrop{width:100%;margin-top:7px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:7px}
+.kitcheck .kdrop:hover{border-color:var(--text);color:var(--text)}
 .kitcheck{
-  border:none;border-left:2px solid var(--warn);border-radius:0;padding:2px 0 2px 12px;
-  font-size:12px;color:var(--warn);margin-bottom:16px;display:flex;gap:8px;align-items:flex-start
+  border:1px solid var(--border);border-radius:0;padding:11px 12px;margin-bottom:16px;font-size:12px
 }
 .foot{flex:none;border-top:1px solid var(--border-2);padding:16px 18px 18px;display:grid;gap:11px;background:var(--surface)}
 .total{display:flex;align-items:baseline;justify-content:space-between}
 .total .lbl{font-size:10px;color:var(--faint);letter-spacing:.13em;text-transform:uppercase;font-weight:700}
-.total .amt{font-size:27px;font-weight:800;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.total .amt{font-family:var(--serif);font-size:32px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .policy{font-size:11px;color:var(--faint);display:flex;align-items:center;gap:6px;line-height:1.35}
 
 /* ============================================================
@@ -323,7 +377,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   font-weight:700;color:var(--red);background:transparent;border:1px solid var(--red);
   border-radius:0;padding:3px 9px;margin-bottom:10px;letter-spacing:.14em
 }
-.modal h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.modal h3{margin:0;font-family:var(--serif);font-size:23px;font-weight:500;letter-spacing:-.015em}
 .modal .mh p{margin:4px 0 0;font-size:12px;color:var(--muted)}
 .modal .mb{padding:12px 18px;max-height:38vh;overflow-y:auto}
 .mrow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0}
@@ -344,7 +398,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .modal .mf .btn{flex:1;height:38px}
 .receipt{text-align:center;padding:26px 20px}
 .receipt .ok{width:46px;height:46px;border-radius:0;border:1px solid var(--red);color:var(--red);display:grid;place-items:center;margin:0 auto 14px}
-.receipt h3{margin:0 0 4px;font-size:16px}
+.receipt h3{margin:0 0 6px;font-family:var(--serif);font-size:21px;font-weight:500}
 .receipt p{margin:0;font-size:12.5px;color:var(--muted)}
 .receipt .oid{font-family:var(--mono);font-size:12px;margin-top:10px;color:var(--faint)}
 
@@ -388,27 +442,29 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   <section class="col left">
     <div class="panel-head">My Kitchen <span class="count" id="kCount">0</span></div>
     <div class="scroll" id="kitchenBody"></div>
-    <div style="flex:none;padding:0 16px 12px">
+    <div style="flex:none;padding:0 18px 16px">
       <div class="addrow">
         <input id="addName" placeholder="Add item…">
-        <button class="btn" id="addBtn">Add</button>
+        <input id="addQty" placeholder="Amount" style="flex:none;width:82px">
+      </div>
+      <div class="addrow">
+        <button class="btn wide" id="addBtn">Add</button>
       </div>
       <div class="addrow">
         <button class="btn wide" id="demoBtn">Load demo kitchen</button>
       </div>
     </div>
-    <div class="acct" id="acct"></div>
   </section>
 
   <!-- ============ CENTER ============ -->
   <section class="col">
     <div class="menu-wrap">
-      <div class="panel-head" style="padding-bottom:0">This Week <span class="count" id="wCount">0 dishes</span></div>
+      <div class="panel-head" style="padding-bottom:0">This Week <span class="dates" id="wDates"></span> <span class="count" id="wCount">0 dishes</span></div>
       <div class="menu" id="menu"></div>
     </div>
     <div class="tree-wrap">
       <div class="tree-bar">
-        Dependency Tree
+        This Week&rsquo;s Ingredients
         <div class="legend">
           <span><i style="background:var(--border-2)"></i>in kitchen</span>
           <span><i style="background:var(--red)"></i>short</span>
@@ -420,6 +476,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 
   <!-- ============ CART ============ -->
   <section class="col right">
+    <div class="acct" id="acct"></div>
     <div class="panel-head">To Buy <span class="count" id="cCount">0</span></div>
     <div class="scroll" id="cartBody"></div>
     <div class="foot">
@@ -436,11 +493,11 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 <!-- ============ AGENT CONSOLE ============ -->
 <section class="console" id="console">
   <div class="chead">
-    <span class="t">Agent Console</span>
+    <span class="t">Agent Console</span><span class="tools" style="color:var(--console-dim)">·&nbsp; not part of the product</span>
     <span class="tools" id="toolCount">8 tools registered</span>
     <div class="spacer" style="flex:1"></div>
     <button id="clearLog">clear</button>
-    <button id="toggleConsole">collapse</button>
+    <button id="toggleConsole">user view</button>
   </div>
   <div class="cbody">
     <div class="clog" id="log"></div>
@@ -476,18 +533,18 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 const ICONS = {
   leaf:'<path d="M4 20c0-9 7-15 16-15 0 9-7 15-16 15z"/><path d="M4 20c4-4 7-6 12-8"/>',
   meat:'<path d="M14 4a6 6 0 015 9c-1 2-3 2-4 4s-2 4-4 4a5 5 0 01-5-5c0-2 2-3 3-5s1-4 3-5a5 5 0 012-2z"/>',
-  fish:'<path d="M2 12c3-4 7-6 11-6s7 3 9 6c-2 3-5 6-9 6s-8-2-11-6z"/><circle cx="17" cy="11" r="1"/><path d="M2 12l4-3v6z"/>',
+  fish:'<path d="M2.4 12c3-3.8 6.8-5.5 10.4-5.5 3.4 0 6.4 2.1 8.6 5.5-2.2 3.4-5.2 5.5-8.6 5.5-3.6 0-7.4-1.7-10.4-5.5z" fill="currentColor" fill-opacity=".12"/><path d="M2.4 12c3-3.8 6.8-5.5 10.4-5.5 3.4 0 6.4 2.1 8.6 5.5-2.2 3.4-5.2 5.5-8.6 5.5-3.6 0-7.4-1.7-10.4-5.5z"/><circle cx="17.2" cy="10.9" r=".85" fill="currentColor"/><path d="M2.4 12l3.7-2.7v5.4z"/>',
   egg:'<path d="M12 3c3.9 0 6 5.4 6 9.5A6 6 0 016 12.5C6 8.4 8.1 3 12 3z"/>',
   grain:'<path d="M12 21V9"/><path d="M12 12c0-3 2-5 5-5 0 3-2 5-5 5z"/><path d="M12 12c0-3-2-5-5-5 0 3 2 5 5 5z"/><path d="M12 6c0-2 1.5-3 3-3 0 2-1.5 3-3 3z"/>',
-  noodle:'<path d="M3 8c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><path d="M3 13c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><path d="M3 18c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/>',
+  noodle:'<path d="M3 13h18a9 9 0 01-18 0z" fill="currentColor" fill-opacity=".13"/><path d="M3 13h18a9 9 0 01-18 0z"/><path d="M5.6 10.4c2.2-2.2 4.4 1 6.6-1.2s4.4 1 6.2-.9"/><path d="M7.4 7.4c1.7-1.7 3.4.9 5.1-.8"/>',
   dairy:'<path d="M8 3h8l-1 4v13a1 1 0 01-1 1h-4a1 1 0 01-1-1V7z"/><path d="M8 8h8"/>',
   bottle:'<path d="M10 2h4v4l2 3v12a1 1 0 01-1 1H9a1 1 0 01-1-1V9l2-3z"/><path d="M8 13h8"/>',
   spice:'<path d="M12 2c2 3 4 5 4 8a4 4 0 01-8 0c0-3 2-5 4-8z"/><path d="M9 18h6"/><path d="M10 21h4"/>',
-  pot:'<path d="M4 9h16v7a4 4 0 01-4 4H8a4 4 0 01-4-4z"/><path d="M2 11h2M20 11h2"/><path d="M8 9V6M16 9V6"/>',
+  pot:'<path d="M4 9.5h16V16a3.5 3.5 0 01-3.5 3.5h-9A3.5 3.5 0 014 16z" fill="currentColor" fill-opacity=".12"/><path d="M4 9.5h16V16a3.5 3.5 0 01-3.5 3.5h-9A3.5 3.5 0 014 16z"/><path d="M2 11.6h2M20 11.6h2"/><path d="M9 6.6c0-1.3 1-1.4 1-2.6M14 6.6c0-1.3 1-1.4 1-2.6"/>',
   wok:'<path d="M3 10h18a9 9 0 01-18 0z"/><path d="M21 10l2-3"/>',
   steam:'<path d="M4 12h16v5a3 3 0 01-3 3H7a3 3 0 01-3-3z"/><path d="M8 8c0-1.5 1-1.5 1-3M12 8c0-1.5 1-1.5 1-3M16 8c0-1.5 1-1.5 1-3"/>',
-  bowl:'<path d="M3 11h18a9 9 0 01-18 0z"/><path d="M6 8c1-1 1-2 0-3M10 8c1-1 1-2 0-3"/>',
-  plate:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/>',
+  bowl:'<path d="M3 12h18a9 9 0 01-18 0z" fill="currentColor" fill-opacity=".13"/><path d="M3 12h18a9 9 0 01-18 0z"/><path d="M8 8.6c0-1.5 1.2-1.7 1.2-3.1M12 8.6c0-1.5 1.2-1.7 1.2-3.1M16 8.6c0-1.5 1.2-1.7 1.2-3.1"/>',
+  plate:'<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12.5" rx="4.8" ry="3.5" fill="currentColor" fill-opacity=".14"/><ellipse cx="12" cy="12.5" rx="4.8" ry="3.5"/><path d="M9.8 10.2c.7-1.3 1.9-1.7 3-1.4"/>',
   lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'
 };
 function ic(n,s){s=s||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||ICONS.leaf)+'</svg>';}
@@ -580,7 +637,8 @@ const DEMO_KITCHEN = {
 const S = {
   kitchen:{},          // id -> qty
   week:[],             // dish ids
-  servings:2,
+  portions:{},          // dishId -> servings
+  gearCart:[],          // cookware the user chose to buy
   lastDiff:null,
   lastExplain:null,
   orders:[],           // orders placed THROUGH this agent, this session
@@ -594,7 +652,7 @@ function computeTree(){
   const need = {};                       // id -> {req, from:[dishId]}
   S.week.forEach(id=>{
     const d = DISH_BY_ID[id]; if(!d) return;
-    const scale = S.servings / d.serves;
+    const scale = (S.portions[id]||d.serves) / d.serves;
     for(const k in d.need){
       if(!need[k]) need[k] = {req:0, from:[]};
       need[k].req += d.need[k]*scale;
@@ -611,8 +669,10 @@ function computeTree(){
   // gear
   const gear = [];
   S.week.forEach(id=>(DISH_BY_ID[id].gear||[]).forEach(g=>{ if(gear.indexOf(g)<0) gear.push(g); }));
-  const gearMissing = gear.filter(g=>!(S.kitchen[g]>0));
-  return {items, gear, gearMissing, rawRequests:Object.values(need).reduce((s,v)=>s+v.from.length,0)};
+  const gearMissing = gear.filter(g=>!(S.kitchen[g]>0) && S.gearCart.indexOf(g)<0);
+  const gearUsedBy = {};
+  S.week.forEach(id=>(DISH_BY_ID[id].gear||[]).forEach(g=>{ (gearUsedBy[g]=gearUsedBy[g]||[]).push(id); }));
+  return {items, gear, gearMissing, gearUsedBy, rawRequests:Object.values(need).reduce((s,v)=>s+v.from.length,0)};
 }
 
 function computeCart(){
@@ -626,6 +686,11 @@ function computeCart(){
       price:Math.round(packs*p.price*100)/100,
       from:i.from, waste:Math.round((packs*p.size - i.short)*10)/10
     };
+  });
+  S.gearCart.forEach(g=>{
+    const c=CATALOG[g]; if(!c) return;
+    lines.push({id:g, name:c.n, icon:c.icon, cat:'cookware', short:1, unit:'pc',
+                packs:1, packLabel:'1', packSize:1, price:c.pack.price, from:[], gear:true});
   });
   const total = Math.round(lines.reduce((s,l)=>s+l.price,0)*100)/100;
   const rawLines = t.items.filter(i=>i.short>0 && i.cat!=='cookware')
@@ -741,13 +806,14 @@ const TOOLS = [
     required:['dishes']},
   run(a){
     const before=snapshot();
-    if(a.servings) S.servings=a.servings;
     const ids=(a.dishes||[]).map(resolveDish).filter(Boolean);
-    if(a.replace) S.week=ids; else ids.forEach(id=>{ if(S.week.indexOf(id)<0) S.week.push(id); });
+    if(a.replace){ S.week=ids; S.portions={}; }
+    else ids.forEach(id=>{ if(S.week.indexOf(id)<0) S.week.push(id); });
+    ids.forEach(id=>{ if(!S.portions[id]) S.portions[id]= a.servings || DISH_BY_ID[id].serves; });
     S.focus=null; S.lastExplain=null;
     const after=snapshot(); const d=diffSnap(before,after);
     S.lastDiff={title:'plan_week', d};
-    return {week:S.week.map(i=>DISH_BY_ID[i].n), servings:S.servings, diff:d, merge:mergeStats()};
+    return {week:S.week.map(i=>({dish:DISH_BY_ID[i].n, servings:S.portions[i]})), diff:d, merge:mergeStats()};
   },
   summary:r=>r.week.length+' dishes · '+r.merge.requests+' ingredient requests → '+r.merge.unique+
     ' unique → '+r.merge.toBuy+' to buy · '+money(r.merge.total)
@@ -760,13 +826,39 @@ const TOOLS = [
     const id=resolveDish(a.dish);
     if(!id||S.week.indexOf(id)<0) return {error:'not in this week’s plan: '+a.dish};
     const before=snapshot();
-    S.week=S.week.filter(x=>x!==id); S.focus=null; S.lastExplain=null;
+    S.week=S.week.filter(x=>x!==id); delete S.portions[id]; S.focus=null; S.lastExplain=null;
     const after=snapshot(); const d=diffSnap(before,after);
     S.lastDiff={title:'remove_dish · '+DISH_BY_ID[id].n, d};
     return {removed:DISH_BY_ID[id].n, diff:d, merge:mergeStats()};
   },
   summary:r=>r.error?r.error:('−'+r.diff.removed.length+' lines, '+r.diff.reduced.length+' reduced, '+
     money(r.diff.delta)+' → '+r.merge.toBuy+' to buy · '+money(r.merge.total))
+},
+{
+  name:'set_portions',
+  description:'How many people a dish is being cooked for. Every quantity downstream — the tree, the merge, the cart — rescales.',
+  inputSchema:{type:'object',properties:{dish:{type:'string'},servings:{type:'number'}},required:['dish','servings']},
+  run(a){
+    const id=resolveDish(a.dish);
+    if(!id||S.week.indexOf(id)<0) return {error:'not in this week’s plan: '+a.dish};
+    const n=Math.max(1,Math.min(12,Math.round(a.servings)));
+    const before=snapshot(); S.portions[id]=n;
+    const after=snapshot();
+    return {dish:DISH_BY_ID[id].n, servings:n, diff:diffSnap(before,after), merge:mergeStats()};
+  },
+  summary:r=>r.error?r.error:(r.dish+' → '+r.servings+' servings · '+r.merge.toBuy+' to buy · '+money(r.merge.total))
+},
+{
+  name:'add_gear_to_cart',
+  description:'Buy a missing piece of cookware instead of dropping the dish that needs it.',
+  inputSchema:{type:'object',properties:{item:{type:'string'}},required:['item']},
+  run(a){
+    const id=resolveItem(a.item);
+    if(!id||CATALOG[id].cat!=='cookware') return {error:'not a piece of cookware: '+a.item};
+    if(S.gearCart.indexOf(id)<0) S.gearCart.push(id);
+    return {added:CATALOG[id].n, price:CATALOG[id].pack.price, merge:mergeStats()};
+  },
+  summary:r=>r.error?r.error:('+ '+r.added+' '+money(r.price)+' · total '+money(r.merge.total))
 },
 {
   name:'explain_shortage',
@@ -823,7 +915,7 @@ const TOOLS = [
     S.orders.push({orderId, total:c.total, items:c.lines.length,
                    status:'preparing', eta:'tomorrow 8–10am', store:'Meridian Market (demo)'});
     showReceipt(orderId, c.total);
-    S.week=[]; S.lastDiff=null;
+    S.week=[]; S.portions={}; S.gearCart=[]; S.lastDiff=null;
     return {status:'placed', orderId, store:'Meridian Market (demo)', items:c.lines.length,
             total:c.total, paymentMethod:'•••• 4242', cardNumber:'<never exposed to tools>'};
   },
@@ -881,6 +973,7 @@ async function invoke(name, args, source){
   CALLS++;
   render();
   logRow('res','← '+tool.summary(res), null, ms);
+  if(res && res.diff) logDiff(res.diff);
   return res;
 }
 
@@ -927,6 +1020,8 @@ const SCRIPTS=[
    steps:[['explain_shortage',{item:'Sichuan peppercorn'}]]},
   {label:'Diff', text:'Drop Mapo Tofu.',
    steps:[['remove_dish',{dish:'Mapo Tofu'}]]},
+  {label:'Portions', text:'Make the fried rice for 4 people.',
+   steps:[['set_portions',{dish:'Chicken Fried Rice',servings:4}]]},
   {label:'Used up', text:'I used up the garlic.',
    steps:[['remove_from_kitchen',{items:[{item:'garlic'}]}]]},
   {label:'Refused', text:'Change my delivery address to 42 Mission St.',
@@ -953,6 +1048,16 @@ function route(text){
   if(ph) return [[ph.tool, {request:text}]];
   const dishHit=()=>{ for(const d of DISHES){ if(s.indexOf(d.n.toLowerCase())>=0||(d.cn&&text.indexOf(d.cn)>=0)) return d.n; } return null; };
   if(/check ?out|place (the )?order|pay|下单|结账/.test(s)) return [['checkout',{}]];
+  const pm=s.match(/(\d+)\s*(people|servings|portions|人|份)/);
+  if(pm){
+    for(const d of DISHES){ if(s.indexOf(d.n.toLowerCase())>=0||(d.cn&&text.indexOf(d.cn)>=0))
+      return [['set_portions',{dish:d.n,servings:Number(pm[1])}]]; }
+    if(S.week.length) return S.week.map(id=>['set_portions',{dish:id,servings:Number(pm[1])}]);
+  }
+  if(/buy.*(steamer|wok|pot)|add.*(steamer|wok|pot).*cart|买.*(蒸锅|炒锅|汤锅)/.test(s)){
+    const g=['steamer','wok','pot'].find(x=>s.indexOf(x)>=0)||'steamer';
+    return [['add_gear_to_cart',{item:g}]];
+  }
   if(/where.*(order|delivery)|order status|when.*arrive|我的单|到哪了|送到没/.test(s)) return [['get_order_status',{}]];
   if(/used up|ran out of|out of |throw(n)? out|用完|吃完|没有了/.test(s)){
     const m=s.replace(/^.*?(used up|ran out of|out of |用完了?|吃完了?)\s*(the |my )?/,'').replace(/[.。!]/g,'');
@@ -1011,6 +1116,16 @@ function logRow(kind,text,source,ms){
   if(ms!=null){ const m=document.createElement('span'); m.className='ms'; m.textContent=ms+'ms'; row.appendChild(m); }
   logEl.appendChild(row);
   logEl.scrollTop=logEl.scrollHeight;
+}
+function logDiff(d){
+  const bits=[]
+    .concat(d.removed.map(x=>'−  '+x))
+    .concat(d.reduced.map(x=>'↓  '+x))
+    .concat(d.increased.map(x=>'↑  '+x))
+    .concat(d.added.map(x=>'+  '+x));
+  if(!bits.length) return;
+  bits.slice(0,8).forEach(b=>logRow('cmp','      '+b));
+  logRow('cmp','      = '+(d.delta>=0?'+':'')+money(d.delta)+'   ← the tool returned this, not a page');
 }
 function logCompare(nCalls){
   const t=computeTree();
@@ -1076,7 +1191,7 @@ function renderKitchen(){
   box.innerHTML=['ingredient','seasoning','cookware'].map(cat=>{
     const list=groups[cat].sort((a,b)=>CATALOG[a].n.localeCompare(CATALOG[b].n));
     return '<div class="kgroup"><h4>'+titles[cat]+' <span>'+list.length+'</span></h4>'+
-      (list.length?list.map(k=>'<div class="kitem"><span class="ic">'+ic(CATALOG[k].icon,15)+'</span>'+
+      (list.length?list.map(k=>'<div class="kitem"><span class="ic t-'+CATALOG[k].icon+'">'+ic(CATALOG[k].icon,16)+'</span>'+
         '<span class="nm">'+CATALOG[k].n+'</span>'+
         '<span class="qt">'+(cat==='cookware'?'✓':qty(S.kitchen[k],CATALOG[k].u))+'</span></div>').join('')
        :'<div class="empty">nothing yet</div>')+'</div>';
@@ -1091,12 +1206,19 @@ function renderMenu(){
     const keys=Object.keys(d.need);
     const miss=keys.filter(k=>(S.kitchen[k]||0)<d.need[k]).length;
     const cu=CUISINE[d.cuisine];
-    return '<button class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'">'+
-      '<span class="cui">'+cu.label+'</span>'+
-      '<span class="top"><span class="glyph">'+ic(d.glyph,15)+'</span>'+
-      '<span><span class="nm">'+d.n+'</span><span class="cn">'+d.cn+'</span></span></span>'+
+    return '<span class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'" role="button" tabindex="0">'+
+      '<span class="shot"><span class="fb">'+ic(d.glyph,40)+'</span>'+
+        '<img src="dishes/'+d.id+'.jpg" alt="" loading="lazy" onerror="this.remove()"></span>'+
+      '<span class="pad">'+
+        '<span class="cui">'+cu.label+'</span>'+
+        '<span class="top"><span><span class="nm">'+d.n+'</span><span class="cn">'+d.cn+'</span></span></span>'+
+      '</span>'+
       '<span class="meta">'+d.min+' MIN'+(miss?' · <span class="miss">'+miss+' SHORT</span>':' · <span class="ok">COMPLETE</span>')+'</span>'+
-    '</button>';
+      (on?'<span class="portions"><span class="pl">Portions</span>'+
+        '<span class="step"><button class="pm" data-port="'+d.id+'" data-d="-1" aria-label="fewer">−</button>'+
+        '<span class="pv">'+(S.portions[d.id]||d.serves)+'</span>'+
+        '<button class="pm" data-port="'+d.id+'" data-d="1" aria-label="more">+</button></span></span>':'')+
+    '</span>';
   }).join('');
 }
 
@@ -1104,7 +1226,14 @@ let prevItemIds=[];
 function renderTree(){
   const host=$('treeScroll'); const t=computeTree();
   if(!S.week.length){
-    host.innerHTML='<div class="tree-empty"><b>No dishes planned</b>Pick dishes above, or ask the agent below. The tree shows every ingredient, who needs it, and what you are short.</div>';
+    host.innerHTML='<div class="tree-empty">'+
+      '<svg class="setting" viewBox="0 0 220 96" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+        '<circle cx="110" cy="48" r="37"/><circle cx="110" cy="48" r="27"/>'+
+        '<path d="M56 22v22a5 5 0 0 0 5 5h2a5 5 0 0 0 5-5V22"/><path d="M62 22v18"/><path d="M62 49v25"/>'+
+        '<path d="M158 22c5 0 8 5 8 11s-3 10-8 10"/><path d="M158 43v31"/>'+
+        '<path d="M96 44c4-6 10-8 16-6" opacity=".55"/>'+
+      '</svg>'+
+      '<b>还没点菜</b>Pick dishes above, or ask the agent below.<br>The tree shows every ingredient, who needs it, and what you are short.</div>';
     prevItemIds=[]; return;
   }
   const shortItems=t.items.filter(i=>i.short>0);
@@ -1114,7 +1243,7 @@ function renderTree(){
     const cls = i.short>0 ? 'short':'have';
     const pulse = i.short>0 && i.from.length>1 ? ' pulse':'';
     return '<button class="tnode item '+cls+fresh+pulse+'" data-item="'+i.id+'">'+
-      '<span class="ic">'+ic(i.icon,14)+'</span>'+
+      '<span class="ic t-'+i.icon+'">'+ic(i.icon,16)+'</span>'+
       '<span class="nm">'+i.name+'</span>'+
       '<span class="qt">'+(i.short>0?('need '+qty(i.short,i.unit)):qty(i.req,i.unit))+'</span></button>';
   };
@@ -1178,20 +1307,18 @@ function renderCart(){
   $('total').textContent=money(c.total);
   $('checkoutBtn').disabled=!c.lines.length;
   let html='';
-  if(S.lastDiff){
-    const d=S.lastDiff.d;
-    const bits=[];
-    d.removed.forEach(x=>bits.push('<li><b>−</b>'+x+'</li>'));
-    d.reduced.forEach(x=>bits.push('<li><b>↓</b>'+x+'</li>'));
-    d.increased.forEach(x=>bits.push('<li><b>↑</b>'+x+'</li>'));
-    d.added.forEach(x=>bits.push('<li><b>+</b>'+x+'</li>'));
-    if(bits.length) html+='<div class="diff"><h5>'+S.lastDiff.title+' → diff</h5><ul>'+bits.slice(0,7).join('')+
-      '</ul><div style="margin-top:6px;font-family:var(--mono);font-size:11px">total '+(d.delta>=0?'+':'')+money(d.delta)+'</div></div>';
-  }
-  if(c.gearMissing.length){
-    html+='<div class="kitcheck">'+ic('steam',14)+'<div><b>Kit check</b><br>You don’t own: '+
-      c.gearMissing.map(g=>CATALOG[g].n).join(', ')+'. Not added to the cart.</div></div>';
-  }
+  c.gearMissing.forEach(g=>{
+    const gc=CATALOG[g], users=(c.tree.gearUsedBy[g]||[]).map(d=>DISH_BY_ID[d].n);
+    html+='<div class="kitcheck">'+
+      '<div class="kh">'+ic('steam',13)+'<b>You don’t own a '+gc.n.toLowerCase()+'</b></div>'+
+      '<div class="kb">'+users.join(', ')+' needs it.</div>'+
+      '<div class="kopt"><span class="ic">'+ic(gc.icon,17)+'</span>'+
+        '<span class="kn">'+gc.n+'<small>adds to this order</small></span>'+
+        '<span class="kp">'+money(gc.pack.price)+'</span>'+
+        '<button class="kadd" data-gear="'+g+'">Add</button></div>'+
+      (users.length?'<button class="kdrop" data-dropgear="'+users[0]+'">Drop '+users[0]+' instead</button>':'')+
+    '</div>';
+  });
   if(S.lastExplain){
     const x=S.lastExplain;
     html+='<div class="diff" style="border-color:color-mix(in srgb,var(--short) 34%,var(--border));background:var(--short-soft)">'+
@@ -1209,9 +1336,9 @@ function renderCart(){
       '<div><div class="k">To buy</div><div class="v">'+c.mergedLines+' <small>items</small></div></div></div>';
   }
   html+= c.lines.length ? c.lines.map(l=>
-    '<div class="line" data-line="'+l.id+'"><span class="ic">'+ic(l.icon,16)+'</span>'+
+    '<div class="line" data-line="'+l.id+'"><span class="ic t-'+l.icon+'">'+ic(l.icon,18)+'</span>'+
     '<div class="body"><div class="nm">'+l.name+'</div>'+
-    '<div class="sub">'+l.packs+'× '+l.packLabel+' · '+l.from.length+' dish'+(l.from.length>1?'es':'')+'</div></div>'+
+    '<div class="sub">'+(l.gear?'cookware · one-off':(l.packs+'× '+l.packLabel+' · '+l.from.length+' dish'+(l.from.length>1?'es':'')))+'</div></div>'+
     '<span class="pr">'+money(l.price)+'</span></div>').join('')
     : '<div class="empty">Nothing to buy yet.</div>';
   box.innerHTML=html;
@@ -1220,10 +1347,9 @@ function renderCart(){
 function renderAccount(){
   $('acct').innerHTML =
     '<h4>Account '+ic('lock',12)+'<b>0 tools</b></h4>'+
-    ACCOUNT.map(a=>'<div class="arow" data-acct="'+a.id+'">'+
-      '<span class="lk">'+ic('lock',12)+'</span>'+
+    '<div class="grid">'+ACCOUNT.map(a=>'<div class="arow" data-acct="'+a.id+'">'+
       '<span class="nm">'+a.label+'</span>'+
-      '<span class="vl">'+a.value+'</span></div>').join('')+
+      '<span class="vl">'+a.value+'</span></div>').join('')+'</div>'+
     '<div class="anote">The site holds all of this. None of it was registered as a tool, '+
     'so no agent can reach it — including this one.<br><br>'+
     'Scope, not category: <b style="color:var(--text)">get_order_status</b> is registered — '+
@@ -1241,6 +1367,13 @@ function render(){ renderKitchen(); renderMenu(); renderTree(); renderCart(); }
 
 /* ============ 10. EVENTS ============ */
 $('menu').addEventListener('click',e=>{
+  const step=e.target.closest('[data-port]');
+  if(step){
+    e.stopPropagation();
+    const id=step.dataset.port, cur=S.portions[id]||DISH_BY_ID[id].serves;
+    invoke('set_portions',{dish:id,servings:cur+Number(step.dataset.d)},'ui');
+    return;
+  }
   const b=e.target.closest('[data-dish]'); if(!b) return;
   const id=b.dataset.dish;
   if(S.week.indexOf(id)>=0) invoke('remove_dish',{dish:id},'ui');
@@ -1264,14 +1397,26 @@ $('treeScroll').addEventListener('mouseover',e=>{
 });
 $('treeScroll').addEventListener('mouseout',()=>$('tip').classList.remove('on'));
 $('cartBody').addEventListener('click',e=>{
-  const l=e.target.closest('[data-line]'); if(l) invoke('explain_shortage',{item:l.dataset.line},'ui');
+  const g=e.target.closest('[data-gear]');
+  if(g){ invoke('add_gear_to_cart',{item:g.dataset.gear},'ui'); return; }
+  const dg=e.target.closest('[data-dropgear]');
+  if(dg){ invoke('remove_dish',{dish:dg.dataset.dropgear},'ui'); return; }
+  const l=e.target.closest('[data-line]');
+  if(l) invoke('explain_shortage',{item:l.dataset.line},'ui');
 });
 $('checkoutBtn').addEventListener('click',()=>invoke('checkout',{},'ui'));
 $('addBtn').addEventListener('click',()=>{
   const v=$('addName').value.trim(); if(!v) return;
-  invoke('add_to_kitchen',{items:[{item:v}]},'ui'); $('addName').value='';
+  const q=parseFloat(($('addQty').value||'').replace(/[^0-9.]/g,''));
+  invoke('add_to_kitchen',{items:[{item:v, qty:isFinite(q)&&q>0?q:undefined}]},'ui');
+  $('addName').value=''; $('addQty').value='';
 });
 $('addName').addEventListener('keydown',e=>{ if(e.key==='Enter') $('addBtn').click(); });
+$('addQty').addEventListener('keydown',e=>{ if(e.key==='Enter') $('addBtn').click(); });
+$('menu').addEventListener('keydown',e=>{
+  const b=e.target.closest('[data-dish]');
+  if(b && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); b.click(); }
+});
 $('demoBtn').addEventListener('click',()=>{
   S.kitchen=Object.assign({},DEMO_KITCHEN);
   logRow('usr','$ load demo kitchen'); render();
@@ -1284,7 +1429,7 @@ $('prompt').addEventListener('keydown',e=>{ if(e.key==='Enter') $('send').click(
 $('clearLog').addEventListener('click',()=>logEl.innerHTML='');
 $('toggleConsole').addEventListener('click',e=>{
   const c=$('console'); c.classList.toggle('collapsed');
-  e.target.textContent=c.classList.contains('collapsed')?'expand':'collapse';
+  e.target.textContent=c.classList.contains('collapsed')?'developer view':'user view';
   setTimeout(drawEdges,260);
 });
 $('modeSeg').addEventListener('click',e=>{
@@ -1312,6 +1457,12 @@ $('chips').addEventListener('click',e=>{
 
 /* ============ BOOT ============ */
 $('toolCount').textContent=TOOLS.length+' tools registered';
+(function(){
+  const n=new Date(), day=(n.getDay()+6)%7, mon=new Date(n); mon.setDate(n.getDate()-day);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  $('wDates').textContent='· '+f(mon)+' – '+f(sun);
+})();
 renderAccount();
 S.kitchen=Object.assign({},DEMO_KITCHEN);
 registerWebMCP();
