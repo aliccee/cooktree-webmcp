@@ -150,7 +150,7 @@ module.exports = async (req, res) => {
         response_format: { type: 'json_object' },
         reasoning: { enabled: false },
         temperature: 0.4,
-        max_tokens: 700,
+        max_tokens: 1200,
       }),
     });
   } catch (e) {
