@@ -4,10 +4,11 @@
 
 CookTree is a demo of [WebMCP](https://github.com/webmachinelearning/webmcp) — the W3C
 draft that lets a website hand an AI agent typed tools instead of making it squint at
-pixels. Every dish you click and every sentence you type goes through the *same* eight
+pixels. Every dish you click and every sentence you type goes through the *same* ten
 tool definitions.
 
-Single HTML file. No dependencies, no build step, no server. Open `index.html`.
+The core app is a single HTML file with no dependencies or build step. Nine tools run entirely
+in the browser; `generate_dish` uses one small Vercel Function so its OpenRouter key stays server-side.
 
 **Live demo → https://aliccee.github.io/cooktree-webmcp/**
 
@@ -104,10 +105,11 @@ model behaves.
 
 ## The tool layer
 
-Eight tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
+Ten tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
 
-Nine tools. Seven of them only read or compute. Exactly one moves money, and it stops for a
-human. That ratio is the design, not an accident.
+Ten tools. Eight of them only read or compute. One calls an outside AI model but still only
+returns data for the site's own engine to plan with. Exactly one moves money, and it stops for
+a human. That ratio is the design, not an accident.
 
 | Tool | What it does | If it fired 100× by mistake |
 |---|---|---|
@@ -119,7 +121,13 @@ human. That ratio is the design, not an accident.
 | `remove_dish` | Drop a dish — returns what vanishes and what shrinks | a draft gets messy |
 | `explain_shortage` | Why is this on my list, who needs it, substitutes | nothing happens |
 | `get_order_status` | Where is the order **this agent placed** | nothing happens |
+| `generate_dish` | Free text → a real dish (ingredients, qty, cook time) via OpenRouter's `deepseek/deepseek-v4-flash`, merged into the same engine as the built-in 8 | a few extra catalog rows |
 | `checkout` | **Human-gated + capped.** Card never enters the tool result | money moves — so it stops |
+
+`generate_dish` calls `/api/generate-dish`, a one-endpoint Vercel Function that holds the
+OpenRouter key server-side (see `DEPLOY.md`) — the browser and the git repo never see it. On
+plain static hosting with no `/api` route, the tool just returns a clear error; the other nine
+tools need nothing beyond the static file.
 
 ### How the set was chosen
 
