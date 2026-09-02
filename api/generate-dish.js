@@ -55,6 +55,26 @@ function slug(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 24) || 'item';
 }
 
+function parseModelJson(content) {
+  const text = String(content || '').trim();
+  const candidates = [text];
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidates.push(text.slice(firstBrace, lastBrace + 1));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch {
+      // Try the next candidate; some providers wrap JSON in tags or fences.
+    }
+  }
+  throw new Error('model did not return valid JSON');
+}
+
 const ALLOWED_GEAR = new Set(['wok', 'pot', 'steamer']);
 const ALLOWED_GLYPH = new Set(['pot', 'bowl', 'plate', 'noodle', 'fish']);
 const ALLOWED_UNIT = new Set(['g', 'ml', 'pc']);
@@ -150,7 +170,7 @@ module.exports = async (req, res) => {
 
   let parsedRaw;
   try {
-    parsedRaw = JSON.parse(content);
+    parsedRaw = parseModelJson(content);
   } catch {
     res.status(502).json({ error: 'model did not return valid JSON' });
     return;
