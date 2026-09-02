@@ -4,13 +4,13 @@
 
 CookTree is a demo of [WebMCP](https://github.com/webmachinelearning/webmcp) — the W3C
 draft that lets a website hand an AI agent typed tools instead of making it squint at
-pixels. Every dish you click and every sentence you type goes through the *same* ten
+pixels. Every dish you click and every sentence you type goes through the *same* twelve
 tool definitions.
 
-The core app is a single HTML file with no dependencies or build step. Nine tools run entirely
-in the browser; `generate_dish` uses one small Vercel Function so its OpenRouter key stays server-side.
+The core app is a single HTML file with no dependencies or build step. Most tools run entirely
+in the browser; two small Vercel Functions keep the OpenRouter and retailer keys server-side.
 
-**Live demo → https://aliccee.github.io/cooktree-webmcp/**
+**Live demo → https://cooktree-webmcp.vercel.app/**
 
 ![CookTree](docs/02-explain.png)
 
@@ -72,30 +72,36 @@ Ask the agent to change the delivery address on the account:
 
 ![Refused](docs/06-refused.png)
 
-The account panel, bottom left, shows what this site *does* hold: the card on file, the
-delivery address, 37 past orders, the spend limit. **None of it was registered as a tool.**
-A DOM-driven agent in this same tab reaches every one of them by clicking into Settings —
-it has the whole session. This one has twelve functions and nothing else.
+The account panel shows the surfaces CookTree deliberately leaves with the retailer:
+payment, delivery address, and retailer order history. **None of them is registered as a
+tool.** CookTree's agent gets twelve purpose-built functions and nothing else.
 
 This is the only beat that proves a *structural* difference. The other two only prove
 convenience.
 
-### 4. Pay without handing over the card
+### 4. Shop real products without handing over the retailer account
 
-`checkout()` is declared as requiring human confirmation above a spend limit.
+`checkout()` always requires an in-page human review before creating a retailer handoff.
 
 ![Confirmation](docs/04-confirm.png)
 
 The site renders its **own** confirmation sheet. The agent is blocked — the console shows
-`⏸ awaiting human confirmation` — until a person clicks. Then the tool returns:
+`⏸ awaiting human confirmation` — until a person clicks. CookTree then sends only product
+names and quantities to the Instacart Developer Platform, which returns a shopping-list URL:
 
 ```json
-{ "orderId": "MM-4821", "total": 26.40, "paymentMethod": "•••• 4242" }
+{
+  "orderId": "CT-K3M9Q2",
+  "status": "awaiting_user_checkout",
+  "provider": "Instacart",
+  "shoppingUrl": "https://www.instacart.com/..."
+}
 ```
 
-A receipt, not credentials. The agent never receives the card number, the billing address,
-or the session cookie. A browser-automation agent doing the same task has to screenshot the
-whole checkout page — card included.
+A handoff, not credentials. The user chooses a nearby store, reviews matched real products
+and current prices, and completes payment on the retailer page. CookTree never receives the
+card number, delivery address, or retailer session. Confirming inside CookTree does not charge
+the user.
 
 **This is the argument.** WebMCP's value isn't that it's faster than clicking. It's that the
 site keeps its secrets and defines its own permission boundary, in code, instead of hoping a
@@ -105,11 +111,11 @@ model behaves.
 
 ## The tool layer
 
-Ten tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
+Twelve tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
 
-Ten tools. Eight of them only read or compute. One calls an outside AI model but still only
-returns data for the site's own engine to plan with. Exactly one moves money, and it stops for
-a human. That ratio is the design, not an accident.
+Eleven stay inside CookTree's planning boundary (including one outside AI call). Exactly one
+can create a real-retailer handoff, and it always stops for a human first. Final payment remains
+on the retailer page.
 
 | Tool | What it does | If it fired 100× by mistake |
 |---|---|---|
@@ -119,15 +125,17 @@ a human. That ratio is the design, not an accident.
 | `search_dishes` | Filter by time / cuisine / must-use | nothing happens |
 | `plan_week` | Set the week — returns a **diff plus merge stats**, not a page | a draft gets messy |
 | `remove_dish` | Drop a dish — returns what vanishes and what shrinks | a draft gets messy |
+| `set_portions` | Rescale one dish and every downstream quantity | a draft gets messy |
+| `add_gear_to_cart` | Add missing cookware to the computed list | a draft gets messy |
 | `explain_shortage` | Why is this on my list, who needs it, substitutes | nothing happens |
-| `get_order_status` | Where is the order **this agent placed** | nothing happens |
+| `get_order_status` | Status of the retailer handoff **this agent created** | nothing happens |
 | `generate_dish` | Free text → a real dish (ingredients, qty, cook time) via OpenRouter's `deepseek/deepseek-v4-flash-0731:nitro`, merged into the same engine as the built-in 8 | a few extra catalog rows |
-| `checkout` | **Human-gated + capped.** Card never enters the tool result | money moves — so it stops |
+| `checkout` | **Human-gated.** Creates a real-product shopping list; payment stays at the retailer | an external list is created |
 
-`generate_dish` calls `/api/generate-dish`, a one-endpoint Vercel Function that holds the
-OpenRouter key server-side (see `DEPLOY.md`) — the browser and the git repo never see it. On
-plain static hosting with no `/api` route, the tool just returns a clear error; the other nine
-tools need nothing beyond the static file.
+`generate_dish` calls `/api/generate-dish`; `checkout` calls `/api/create-shopping-list`.
+Both are Vercel Functions that hold provider keys server-side (see `DEPLOY.md`) — the browser
+and git repo never see them. On plain static hosting with no `/api` routes, the client-only tools
+still work and the two networked tools return clear configuration errors.
 
 ### How the set was chosen
 
@@ -137,7 +145,8 @@ One question per candidate: **if this fired 100 times by mistake, what happens?*
 |---|---|
 | Nothing happens | expose |
 | A draft gets messy, undo fixes it | expose |
-| Money moves | expose, but gate it on a human and cap it |
+| A retailer handoff is created | expose, but always gate it on a human |
+| Money moves | keep the final action on the retailer page |
 | **The account becomes someone else's** | **never expose** |
 
 Deliberately **not** registered: `update_delivery_address`, `update_payment_method`,
@@ -148,10 +157,10 @@ unknown-tool path — there is no fake refusal branch.
 the classic first step of account takeover: no card is stolen, every future order just ships
 somewhere else, and unlike a card change it usually sends no alert.
 
-**Scope, not category.** `get_order_status` *is* registered — it covers orders this agent
-placed. Reading the account's 37 earlier orders is a different scope and has no tool. The
-same noun splits into an exposed half and a withheld half; that granularity is the whole
-point of registering functions instead of handing over a session.
+**Scope, not category.** `get_order_status` *is* registered — it covers checkout handoffs this
+agent created in the current tab. Reading the retailer account's order history is a different
+scope and has no tool. The same noun splits into an exposed half and a withheld half; that
+granularity is the whole point of registering functions instead of handing over a session.
 
 Clicking an ingredient in the tree fires `explain_shortage`. Clicking a dish card fires
 `plan_week`. It all shows up in the console as tool calls, because it's all the same layer.
@@ -181,15 +190,15 @@ python3 -m http.server 8000
 
 ## Demo script
 
-Five preset prompts live in the console sidebar. In order:
+Eight preset prompts live in the console sidebar. In order:
 
 1. *"I have tofu and beef. Plan three dinners under 45 minutes."* — `search_dishes` → `plan_week`, tree grows
 2. *"Why is Sichuan peppercorn on my list?"* — one dish lights up, everything else dims, substitutes appear
 3. *"Drop Mapo Tofu."* — the diff, in one call
 4. *"I used up the garlic."* — inventory shrinks, the buy list grows to match
 5. *"Change my delivery address to 42 Mission St."* — **refused; the account row lights up**
-6. *"Check out."* — the confirmation sheet
-7. *"Where is my order?"* — answered for this session, scoped away from the 37 earlier ones
+6. *"Check out."* — human review, then a shopping list matched to real retailer products
+7. *"Where is my order?"* — answered for this tab's handoff only; retailer history stays out of scope
 
 ## Screenshots
 
@@ -199,9 +208,10 @@ Five preset prompts live in the console sidebar. In order:
 
 ## Notes
 
-- The store (*Meridian Market*) is fictional and the card is the standard test number. Nothing
-  is charged; there is no backend.
-- Pack sizes and prices live in `CATALOG[*].pack`. They're what make merging non-trivial.
+- Instacart performs the real product/store matching. A development key creates test integration
+  links; live commerce requires an approved production key.
+- Pack sizes and prices in `CATALOG[*].pack` are planning estimates. The retailer page is the
+  source of truth for current product availability and prices.
 - Data (`§1`), engine (`§3`), tools (`§4`), registration (`§5`), agent (`§6`), render (`§9`).
 
 ## License

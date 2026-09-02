@@ -138,6 +138,13 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .btn.primary:hover{background:var(--red);border-color:var(--red);color:#fff}
 .btn.wide{width:100%;height:38px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
+a.btn{text-decoration:none}
+.instacart-cta{
+  height:46px;border:0;border-radius:29.5px;background:#003D29;color:#FAF1E5;
+  padding:0 18px;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none
+}
+.instacart-cta:hover{background:#003D29;color:#FAF1E5;border-color:#003D29;filter:brightness(1.08)}
+.instacart-cta img{width:22px;height:22px;display:block;object-fit:contain}
 
 /* Identity tint — what kind of food this is. Deliberately desaturated, and
    always outranked by the red "you are short" state (higher specificity). */
@@ -396,6 +403,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 }
 .modal .mf{padding:12px 18px 16px;display:flex;gap:8px;border-top:1px solid var(--border)}
 .modal .mf .btn{flex:1;height:38px}
+.modal .mf .instacart-cta{height:46px}
 .receipt{text-align:center;padding:26px 20px}
 .receipt .ok{width:46px;height:46px;border-radius:0;border:1px solid var(--red);color:var(--red);display:grid;place-items:center;margin:0 auto 14px}
 .receipt h3{margin:0 0 6px;font-family:var(--serif);font-size:21px;font-weight:500}
@@ -487,9 +495,9 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
       <div class="total"><span class="lbl">Estimated total</span><span class="amt" id="total">$0.00</span></div>
       <div class="policy">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        Auto-approve under $25 · human confirm above
+        Human review · final price and payment at retailer
       </div>
-      <button class="btn primary wide" id="checkoutBtn" disabled>Check out</button>
+      <button class="btn primary wide" id="checkoutBtn" disabled>Shop real products</button>
     </div>
   </section>
 </main>
@@ -622,13 +630,12 @@ const DISHES = [
 ];
 const DISH_BY_ID = Object.fromEntries(DISHES.map(d=>[d.id,d]));
 
-/* Things this site holds and deliberately did NOT register as tools.
-   A DOM-driven agent reaches all of them by clicking into Settings. */
+/* Retailer-owned account surfaces deliberately kept outside CookTree's tools. */
 const ACCOUNT = [
-  {id:'card',    label:'Card on file',     value:'•••• 4242',     phantom:'update_payment_method'},
-  {id:'address', label:'Delivery address', value:'1 Valencia St', phantom:'update_delivery_address'},
-  {id:'history', label:'Order history',    value:'37 earlier',    phantom:'read_order_history'},
-  {id:'limit',   label:'Spend limit',      value:'$25 / order',   phantom:'update_spend_limit'}
+  {id:'card',    label:'Payment method',   value:'Retailer only', phantom:'update_payment_method'},
+  {id:'address', label:'Delivery address', value:'Retailer only', phantom:'update_delivery_address'},
+  {id:'history', label:'Order history',    value:'Not connected', phantom:'read_order_history'},
+  {id:'limit',   label:'Handoff policy',   value:'Human review',  phantom:'update_spend_limit'}
 ];
 
 const DEMO_KITCHEN = {
@@ -645,7 +652,8 @@ const S = {
   gearCart:[],          // cookware the user chose to buy
   lastDiff:null,
   lastExplain:null,
-  orders:[],           // orders placed THROUGH this agent, this session
+  orders:[],           // retailer handoffs created THROUGH this agent, this session
+  shoppingLinkCache:null,
   focus:null,          // hovered/selected node key
   mode:'agent',
   mcp:false
@@ -733,6 +741,19 @@ const qty = (v,u)=> u==='pc' ? (Math.round(v*10)/10)+'' : (v>=1000? (v/1000).toF
    `python3 -m http.server`) there's no /api route, so generate_dish just
    returns a clear error instead of a dead fetch. */
 const GENERATE_DISH_URL = '/api/generate-dish';
+const CREATE_SHOPPING_LIST_URL = '/api/create-shopping-list';
+
+function shoppingSignature(cart){
+  return JSON.stringify(cart.lines.map(l=>[l.id,l.short,l.unit,l.packs,l.packLabel]));
+}
+function shoppingLineItems(cart){
+  return cart.lines.map(l=>({
+    name:l.name,
+    quantity:l.unit==='pc' ? Math.max(1,l.short) : l.short,
+    unit:l.unit,
+    displayText:l.name+' · '+qty(l.short,l.unit)
+  }));
+}
 
 /* Turn a validated {dish} from the worker into a real DISHES[] entry.
    Existing ingredients are reused as-is (their price/pack stays canonical);
@@ -918,42 +939,66 @@ const TOOLS = [
 },
 {
   name:'get_order_status',
-  description:'Where is the order this agent placed? Covers only orders placed in this session — the account’s earlier orders are a different thing and are not exposed.',
+  description:'Get the status of a retailer checkout handoff created by this agent in this tab. It cannot read the user’s Instacart order history or payment account.',
   inputSchema:{type:'object',properties:{orderId:{type:'string'}}},
   run(a){
     if(!S.orders.length){
-      return {orders:[], note:'No order placed through this agent yet. The 37 earlier orders on this '+
-        'account are a different scope — read_order_history is not a registered tool.'};
+      return {orders:[], note:'No retailer checkout handoff has been created through this agent yet. '+
+        'Instacart order history is outside CookTree and is not exposed as a tool.'};
     }
     const o = a.orderId ? S.orders.find(x=>x.orderId===a.orderId) : S.orders[S.orders.length-1];
     if(!o) return {error:'not an order from this session: '+a.orderId};
-    return {order:o, scope:'this session only · 37 earlier orders not exposed'};
+    return {order:o, scope:'CookTree handoffs in this tab only · retailer account not exposed'};
   },
-  summary:r=>r.order ? (r.order.orderId+' · '+r.order.status+' · '+r.order.eta+' · '+money(r.order.total))
-          : (r.error || 'no order from this agent yet — past orders are out of scope')
+  summary:r=>r.order ? (r.order.orderId+' · '+r.order.status+' · '+r.order.provider+' · '+money(r.order.estimatedTotal)+' estimated')
+          : (r.error || 'no retailer handoff from this agent yet')
 },
 {
   name:'checkout',
-  description:'Place the grocery order. Requires human confirmation in the page above the spend limit. The tool result contains an order id only — card details never leave the site.',
+  description:'After an in-page human review, create an Instacart shopping list that matches the plan to real products at nearby stores. The user chooses the store, reviews live prices, and completes payment on Instacart; CookTree never receives retailer credentials or card details.',
   inputSchema:{type:'object',properties:{note:{type:'string'}}},
   async run(a, ctx){
     const c=computeCart();
     if(!c.lines.length) return {error:'cart is empty'};
-    const LIMIT=25;
-    if(c.total>LIMIT){
-      ctx && ctx.log('wait','⏸ awaiting human confirmation — site-rendered sheet, agent is blocked');
-      const ok = await confirmSheet(c);
-      if(!ok) return {status:'declined_by_user', total:c.total};
+    ctx && ctx.log('wait','⏸ awaiting human confirmation — real retailer handoff, agent is blocked');
+    const ok = await confirmSheet(c);
+    if(!ok) return {status:'declined_by_user', estimatedTotal:c.total};
+
+    const signature=shoppingSignature(c);
+    let link=S.shoppingLinkCache && S.shoppingLinkCache.signature===signature ? S.shoppingLinkCache.result : null;
+    if(!link){
+      ctx && ctx.log('wait','↗ asking Instacart to match '+c.lines.length+' real products');
+      let response;
+      try{
+        response=await fetch(CREATE_SHOPPING_LIST_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            title:'CookTree · '+S.week.map(id=>DISH_BY_ID[id].n).join(', '),
+            lineItems:shoppingLineItems(c)
+          })});
+      }catch(e){
+        const error='could not reach /api/create-shopping-list: '+e.message;
+        showCheckoutError(error); return {error};
+      }
+      let body;
+      try{ body=await response.json(); }catch(e){ body={error:'retailer returned a non-JSON response'}; }
+      if(!response.ok || body.error){
+        const error=body.error||('retailer server error '+response.status);
+        showCheckoutError(error); return {error,code:body.code};
+      }
+      link=body;
+      S.shoppingLinkCache={signature,result:link};
     }
-    const orderId='MM-'+Math.floor(4000+Math.random()*5000);
-    S.orders.push({orderId, total:c.total, items:c.lines.length,
-                   status:'preparing', eta:'tomorrow 8–10am', store:'Meridian Market (demo)'});
-    showReceipt(orderId, c.total);
-    S.week=[]; S.portions={}; S.gearCart=[]; S.lastDiff=null;
-    return {status:'placed', orderId, store:'Meridian Market (demo)', items:c.lines.length,
-            total:c.total, paymentMethod:'•••• 4242', cardNumber:'<never exposed to tools>'};
+
+    const orderId='CT-'+Math.random().toString(36).slice(2,8).toUpperCase();
+    const order={orderId,provider:link.provider||'Instacart',items:c.lines.length,
+      estimatedTotal:c.total,status:'awaiting_user_checkout',shoppingUrl:link.shoppingUrl,
+      environment:link.environment||'development',nextStep:'User selects a nearby store, reviews matched products and live prices, then pays on Instacart.'};
+    S.orders.push(order);
+    showShoppingHandoff(order);
+    return order;
   },
-  summary:r=>r.error?r.error:(r.status==='placed'?('order '+r.orderId+' · '+money(r.total)+' · paid with •••• 4242'):r.status)
+  summary:r=>r.error?r.error:(r.status==='awaiting_user_checkout'?
+    ('real product list ready · '+r.items+' items · '+money(r.estimatedTotal)+' estimated · human completes on Instacart'):r.status)
 },
 {
   name:'generate_dish',
@@ -1201,21 +1246,21 @@ function confirmSheet(cart){
       '<div class="modal" role="dialog" aria-modal="true">'+
         '<div class="mh">'+
           '<div class="badge">Human confirmation required</div>'+
-          '<h3>Meridian Market — demo store</h3>'+
-          '<p>Requested by an agent via <code>checkout()</code>. Review before it goes through.</p>'+
+          '<h3>Send this list to Instacart?</h3>'+
+          '<p>Requested by an agent via <code>checkout()</code>. Review every item before the retailer handoff.</p>'+
         '</div>'+
         '<div class="mb">'+
           cart.lines.map(l=>'<div class="mrow"><span>'+l.name+' <span class="q">'+l.packs+'× '+l.packLabel+'</span></span><span class="p">'+money(l.price)+'</span></div>').join('')+
           '<div class="mdiv"></div>'+
-          '<div class="mrow"><span><b>Total</b></span><span class="p"><b>'+money(cart.total)+'</b></span></div>'+
-          '<div class="mrow"><span style="color:var(--muted)">Delivery</span><span style="color:var(--muted)">Tomorrow, 8–10am</span></div>'+
+          '<div class="mrow"><span><b>CookTree estimate</b></span><span class="p"><b>'+money(cart.total)+'</b></span></div>'+
+          '<div class="mrow"><span style="color:var(--muted)">Store</span><span style="color:var(--muted)">Choose a nearby retailer next</span></div>'+
           '<div style="height:12px"></div>'+
-          '<div class="mcard">'+ic('bottle',16)+'<span class="num">•••• •••• •••• 4242</span><span class="tag">demo card</span></div>'+
-          '<div class="mnote">The agent never receives the card number, the billing address, or the session cookie. If you confirm, its tool result is <code>{orderId, total, "•••• 4242"}</code> — a receipt, not credentials.</div>'+
+          '<div class="mcard">'+ic('lock',16)+'<span class="num">Payment stays on Instacart</span><span class="tag">retailer-owned</span></div>'+
+          '<div class="mnote">Instacart matches these names and quantities to real products. Availability and current prices depend on the store you choose. Confirming creates a shopping link only — it does not charge you.</div>'+
         '</div>'+
         '<div class="mf">'+
           '<button class="btn" data-a="0">Cancel</button>'+
-          '<button class="btn primary" data-a="1">Confirm '+money(cart.total)+'</button>'+
+          '<button class="btn primary" data-a="1">Create shopping list</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(scrim);
@@ -1225,14 +1270,26 @@ function confirmSheet(cart){
     });
   });
 }
-function showReceipt(orderId,total){
+function showShoppingHandoff(order){
   const scrim=document.createElement('div'); scrim.className='scrim';
   scrim.innerHTML='<div class="modal"><div class="receipt">'+
     '<div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
-    '<h3>Order placed — '+money(total)+'</h3>'+
-    '<p>Meridian Market · arriving tomorrow 8–10am</p>'+
-    '<div class="oid">'+orderId+' · paid with •••• 4242</div>'+
-    '</div><div class="mf"><button class="btn wide" data-c="1">Done</button></div></div>';
+    '<h3>Real product list ready</h3>'+
+    '<p>Choose a nearby store, check product matches and live prices, then complete payment on Instacart.</p>'+
+    '<div class="oid">'+order.orderId+' · '+order.items+' items · '+money(order.estimatedTotal)+' CookTree estimate'+
+      (order.environment==='production'?'':' · development integration')+'</div>'+
+    '</div><div class="mf"><button class="btn" data-c="1">Not now</button>'+
+    '<a class="btn instacart-cta" href="'+order.shoppingUrl+'" target="_blank" rel="noopener noreferrer">'+
+      '<img src="assets/instacart-carrot.svg" alt="">Shop on Instacart</a></div></div>';
+  document.body.appendChild(scrim);
+  scrim.addEventListener('click',e=>{ if(e.target.closest('[data-c]')) scrim.remove(); });
+}
+function showCheckoutError(message){
+  const scrim=document.createElement('div'); scrim.className='scrim';
+  scrim.innerHTML='<div class="modal"><div class="mh"><div class="badge">Retailer handoff unavailable</div>'+
+    '<h3>Could not create the Instacart list</h3><p>'+message+'</p></div>'+
+    '<div class="mb"><div class="mnote">No order was placed and nothing was charged. Your CookTree plan is unchanged.</div></div>'+
+    '<div class="mf"><button class="btn wide" data-c="1">Back to plan</button></div></div>';
   document.body.appendChild(scrim);
   scrim.addEventListener('click',e=>{ if(e.target.closest('[data-c]')) scrim.remove(); });
 }
@@ -1409,11 +1466,10 @@ function renderAccount(){
     '<div class="grid">'+ACCOUNT.map(a=>'<div class="arow" data-acct="'+a.id+'">'+
       '<span class="nm">'+a.label+'</span>'+
       '<span class="vl">'+a.value+'</span></div>').join('')+'</div>'+
-    '<div class="anote">The site holds all of this. None of it was registered as a tool, '+
-    'so no agent can reach it — including this one.<br><br>'+
+    '<div class="anote">CookTree deliberately leaves these account surfaces with the retailer. '+
+    'They are not registered as tools, so the agent cannot reach them.<br><br>'+
     'Scope, not category: <b style="color:var(--text)">get_order_status</b> is registered — '+
-    'it covers orders this agent placed. Reading the 37 earlier ones is a different scope, '+
-    'and has no tool.</div>';
+    'it covers checkout handoffs created in this tab. Retailer orders and payment remain a different scope.</div>';
 }
 function flashAccount(toolName){
   const a=ACCOUNT.find(x=>x.phantom===toolName); if(!a) return;

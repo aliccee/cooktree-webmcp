@@ -1,12 +1,15 @@
-# Deploying `generate_dish` (Vercel)
+# Deploying CookTree's provider functions (Vercel)
 
-CookTree is still a static site (`index.html`, no build step). The only
-addition is one serverless function, `api/generate-dish.js`, which holds the
-OpenRouter key server-side and turns a free-text dish description into a real,
-plannable dish using `deepseek/deepseek-v4-flash-0731:nitro` through OpenRouter.
+CookTree is still a static site (`index.html`, no build step). It has two
+serverless functions:
 
-The key never reaches the browser or the repo — it lives only as an
-encrypted Vercel environment variable.
+- `api/generate-dish.js` holds the OpenRouter key and turns free text into a
+  plannable dish using `deepseek/deepseek-v4-flash-0731:nitro`.
+- `api/create-shopping-list.js` holds the Instacart Developer Platform key and
+  turns the computed shortages into a real-product shopping-list link.
+
+The keys never reach the browser or the repo — they live only as
+encrypted Vercel environment variables.
 
 ## Deploy
 
@@ -15,24 +18,25 @@ npm i -g vercel        # or: npx vercel
 vercel login           # opens a browser tab, log into your Vercel account
 vercel link             # links this folder to a Vercel project (first time)
 vercel env add OPENROUTER_API_KEY production
-# paste the key when prompted — it's stored encrypted, not written to any file here
+vercel env add INSTACART_API_KEY production
+# optional only after Instacart approves a production key:
+vercel env add INSTACART_API_ENV production
+# paste keys when prompted — they're stored encrypted, not written to files here
 vercel --prod
 ```
 
-That's it — no URL to copy back into `index.html`. The front end calls the
-relative path `/api/generate-dish`, which Vercel serves from the same origin
-as the static site once deployed. Open the printed `*.vercel.app` URL, type a
-dish description into the "This Week" panel's input, and hit Generate.
+`INSTACART_API_ENV` defaults to `development`, which calls
+`https://connect.dev.instacart.tools`. Do not set it to `production` until the
+corresponding production key has been approved. The front end calls both API
+routes using same-origin relative URLs.
 
 ## Local dev without Vercel
 
-`python3 -m http.server` (or any plain static server) has no `/api` route,
-so `generate_dish` will fail with a clear error telling you to deploy on
-Vercel instead — everything else (the other 9 tools, the UI, the local
-agent) works exactly as before with zero setup.
+`python3 -m http.server` (or any plain static server) has no `/api` routes,
+so the two provider-backed tools fail with clear errors. The client-only tools,
+the UI, and the local agent still work with zero setup.
 
-To test `/api/generate-dish` locally with the real key, use the Vercel dev
-server instead of a plain static server:
+To test the provider functions locally with real keys, use the Vercel dev server:
 
 ```bash
 vercel dev
@@ -40,10 +44,12 @@ vercel dev
 
 ## What this does NOT do
 
-- No auth, no per-user rate limiting, no cost cap beyond `max_tokens` per
-  call. `/api/generate-dish` is reachable by anyone who has the deployed
-  URL — fine for a hackathon demo, not a production safeguard. If this
+- No auth or per-user rate limiting. Both API routes are reachable by anyone
+  who has the deployed URL — fine for a hackathon demo, not a production
+  safeguard. If this
   needs to survive real traffic, add Vercel's rate limiting / Firewall
   rules, or a signed token issued by the page itself.
-- No persistence. Generated dishes live only in the browser tab's memory
-  (same as the rest of CookTree's state) — refresh and they're gone.
+- No retailer order access. CookTree creates a shopping-list handoff only;
+  the user selects the store and completes checkout on the retailer page.
+- No persistence. Generated dishes and handoff status live only in the browser
+  tab's memory — refresh and they're gone.
