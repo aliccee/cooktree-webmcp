@@ -20,7 +20,9 @@ Schema:
   "min": integer,             // realistic cook time in minutes, 5-240
   "serves": integer,          // default 2 unless the description implies otherwise
   "gear": string[],           // subset of ["wok","pot","steamer"] this dish needs; [] if none of those apply
-  "glyph": string,            // closest one of: pot, bowl, plate, noodle, fish
+  "glyph": string,            // closest one of: pot, bowl, plate, noodle, fish — or the
+                               // literal string "none" if this dish genuinely doesn't
+                               // resemble any of them (e.g. a sandwich, salad, dessert, drink)
   "ingredients": [
     {
       "name": string,         // ingredient name, plain English, <=30 chars
@@ -115,12 +117,16 @@ function validateDish(raw) {
     min: Math.round(num(raw.min, 5, 240, 30)),
     serves: Math.round(num(raw.serves, 1, 8, 2)),
     gear: (Array.isArray(raw.gear) ? raw.gear : []).filter((g) => ALLOWED_GEAR.has(g)).slice(0, 3),
-    glyph: ALLOWED_GLYPH.has(raw.glyph) ? raw.glyph : 'bowl',
+    // A deliberate "none" from the model means no built-in shape fits — kept as
+    // null so the caller knows to generate a proper illustration instead of a
+    // mismatched icon. Any other invalid/missing value still defaults to 'bowl',
+    // same as before, so prompt drift doesn't trigger unnecessary extra calls.
+    glyph: raw.glyph === 'none' ? null : (ALLOWED_GLYPH.has(raw.glyph) ? raw.glyph : 'bowl'),
     ingredients,
   };
 }
 
-async function generateDishImage(apiKey, description) {
+async function callImageModel(apiKey, prompt) {
   const response = await fetch(OPENROUTER_IMAGE_URL, {
     method: 'POST',
     headers: {
@@ -131,10 +137,7 @@ async function generateDishImage(apiKey, description) {
     },
     body: JSON.stringify({
       model: IMAGE_MODEL,
-      prompt: `Editorial overhead food photography of the finished dish: ${description}. ` +
-        'Appetizing home-cooked plating, soft natural window light, warm cream tabletop, ' +
-        'subtle shadows, realistic ingredients, centered composition, no people, no text, ' +
-        'no logos, no watermark, no border.',
+      prompt,
       resolution: '1K',
       aspect_ratio: '4:3',
       n: 1,
@@ -154,6 +157,25 @@ async function generateDishImage(apiKey, description) {
     throw new Error('image model returned an invalid or oversized image');
   }
   return { dataUrl: `data:${mediaType};base64,${base64}`, model: IMAGE_MODEL };
+}
+
+function generateDishImage(apiKey, description) {
+  return callImageModel(apiKey,
+    `Editorial overhead food photography of the finished dish: ${description}. ` +
+    'Appetizing home-cooked plating, soft natural window light, warm cream tabletop, ' +
+    'subtle shadows, realistic ingredients, centered composition, no people, no text, ' +
+    'no logos, no watermark, no border.');
+}
+
+// Only called when the dish doesn't fit any of the built-in pot/bowl/plate/noodle/fish
+// glyphs — a cute, flat illustration to stand in for those icons on the dish card,
+// stylistically rhyming with dishes/generator.html's hand-illustrated built-in dishes.
+function generateDishIllustration(apiKey, description) {
+  return callImageModel(apiKey,
+    `Cute flat vector-style illustration of the finished dish: ${description}. ` +
+    'Simple rounded shapes, soft pastel color blocking, minimal outline linework, ' +
+    'warm cream paper background, centered top-down composition, no photorealism, ' +
+    'no people, no text, no logos, no watermark, no border.');
 }
 
 module.exports = async (req, res) => {
@@ -233,13 +255,31 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // Only the minority of dishes that don't fit pot/bowl/plate/noodle/fish (glyph===null)
+  // need a second, illustration-style image call. Kick it off now, concurrently with the
+  // already-in-flight realistic-photo call, rather than serially after it.
+  const illustrationPromise = dish.glyph === null
+    ? generateDishIllustration(apiKey, description).catch((error) => {
+        console.error('[generate-dish] optional illustration generation failed', { message: error.message });
+        return null;
+      })
+    : null;
+
   const generatedImage = await imagePromise;
   if (generatedImage) dish.image = generatedImage.dataUrl;
+  const generatedIllustration = illustrationPromise ? await illustrationPromise : null;
+  if (generatedIllustration) dish.illustration = generatedIllustration.dataUrl;
+
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     dish,
     image: generatedImage
       ? { status: 'generated', model: generatedImage.model }
       : { status: 'unavailable', model: IMAGE_MODEL },
+    ...(illustrationPromise ? {
+      illustration: generatedIllustration
+        ? { status: 'generated', model: generatedIllustration.model }
+        : { status: 'unavailable', model: IMAGE_MODEL },
+    } : {}),
   });
 };

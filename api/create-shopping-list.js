@@ -11,7 +11,7 @@ const SHOPIFY_CATALOG_URL = 'https://catalog.shopify.com/api/ucp/mcp';
 const SHOPIFY_AGENT_PROFILE =
   'https://shopify.dev/ucp/agent-profiles/2026-04-08/valid-with-capabilities.json';
 const MAX_LINE_ITEMS = 20;
-const OFFERS_PER_ITEM = 10;
+const OFFERS_PER_ITEM = 20;
 const REQUEST_TIMEOUT_MS = 12_000;
 
 function cleanString(value, maxLength) {
@@ -100,7 +100,10 @@ async function searchCatalog(lineItem, postalCode) {
           arguments: {
             meta: { 'ucp-agent': { profile: SHOPIFY_AGENT_PROFILE } },
             catalog: {
-              query: `${lineItem.name} grocery ${lineItem.displayText}`.trim(),
+              // Keep the query to plain product terms. Appending the pack/quantity
+              // phrase (e.g. "2 × 1 head") dilutes search relevance and can knock a
+              // seller who'd otherwise cover this item out of the results.
+              query: `${lineItem.name} grocery`.trim(),
               filters: { available: true, ships_to: location },
               context,
               pagination: { limit: OFFERS_PER_ITEM },
@@ -167,39 +170,51 @@ async function searchCatalog(lineItem, postalCode) {
   return [...cheapestBySeller.values()];
 }
 
+// Greedy maximum-coverage set cover: repeatedly pick whichever seller covers
+// the most still-unassigned line items (ties broken by lowest combined price
+// for those items), assign it everything it covers, and repeat on what's
+// left. This minimizes the number of resulting merchant carts instead of
+// picking one "primary" seller and then an independent top match per
+// leftover item (which can scatter across many different sellers).
 function chooseOffers(searches) {
-  const sellerScores = new Map();
-  searches.forEach(({ offers }) => {
-    offers.forEach((offer, rank) => {
-      const score = sellerScores.get(offer.sellerDomain) || {
-        domain: offer.sellerDomain,
-        coverage: 0,
-        rank: 0,
-        total: 0,
-      };
-      score.coverage += 1;
-      score.rank += rank;
-      score.total += offer.totalAmount;
-      sellerScores.set(offer.sellerDomain, score);
+  const bySeller = new Map(); // sellerDomain -> Map(lineId -> offer)
+  searches.forEach(({ lineItem, offers }) => {
+    offers.forEach(offer => {
+      let items = bySeller.get(offer.sellerDomain);
+      if (!items) { items = new Map(); bySeller.set(offer.sellerDomain, items); }
+      const existing = items.get(lineItem.id);
+      if (!existing || offer.unitAmount < existing.unitAmount) items.set(lineItem.id, offer);
     });
   });
 
-  const primary = [...sellerScores.values()].sort((a, b) =>
-    b.coverage - a.coverage || a.rank - b.rank || a.total - b.total
-  )[0];
-
+  const remaining = new Map(searches.map(({ lineItem }) => [lineItem.id, lineItem]));
   const selected = [];
-  const unmatched = [];
-  searches.forEach(({ lineItem, offers }) => {
-    if (!offers.length) {
-      unmatched.push(lineItem.name);
-      return;
+  let primaryDomain = null;
+
+  while (remaining.size) {
+    let best = null;
+    for (const [domain, items] of bySeller) {
+      let coverage = 0, total = 0;
+      for (const lineId of remaining.keys()) {
+        const offer = items.get(lineId);
+        if (offer) { coverage += 1; total += offer.totalAmount; }
+      }
+      if (coverage === 0) continue;
+      if (!best || coverage > best.coverage || (coverage === best.coverage && total < best.total)) {
+        best = { domain, coverage, total };
+      }
     }
-    selected.push(
-      (primary && offers.find(offer => offer.sellerDomain === primary.domain)) || offers[0]
-    );
-  });
-  return { selected, unmatched, primaryDomain: primary && primary.domain };
+    if (!best) break; // no seller covers any remaining item
+    if (primaryDomain === null) primaryDomain = best.domain;
+    const items = bySeller.get(best.domain);
+    for (const lineId of [...remaining.keys()]) {
+      const offer = items.get(lineId);
+      if (offer) { selected.push(offer); remaining.delete(lineId); }
+    }
+  }
+
+  const unmatched = [...remaining.values()].map(lineItem => lineItem.name);
+  return { selected, unmatched, primaryDomain };
 }
 
 function cartUrlForGroup(group) {
