@@ -1558,7 +1558,7 @@ function confirmSheet(cart){
       '<div class="modal" role="dialog" aria-modal="true">'+
         '<div class="mh">'+
           '<div class="badge">Human confirmation required</div>'+
-          '<h3>Find these products on Shopify?</h3>'+
+          '<h3>Find these items on Shopify</h3>'+
           '<p>Requested by an agent via <code>checkout()</code>. Review the list before a live catalog search.</p>'+
           '<p style="margin-top:6px;font-size:11.5px;color:var(--muted)">'+
             'This searches the store catalog and hands you the results. '+
@@ -1608,7 +1608,7 @@ function showShoppingHandoff(order){
     })():'');
   scrim.innerHTML='<div class="modal"><div class="receipt">'+
     '<div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
-    '<h3>Live Shopify products ready</h3>'+
+    '<h3>Live Shopify Carts Ready</h3>'+
     '<p>Review every match on the merchant site before paying. Shipping and taxes are confirmed there.</p>'+
     '<div class="oid">'+escapeHTML(order.orderId)+' · '+order.items+'/'+order.requestedItems+' matched · '+
       order.groups.length+' merchant cart'+(order.groups.length===1?'':'s')+' · '+moneyMinor(order.liveTotalAmount,order.currency)+' live subtotal</div>'+
