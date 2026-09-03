@@ -798,7 +798,17 @@ const S = {
 };
 
 const FAV_KEY='cooktree.favorites';
-function loadFavorites(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)); if(Array.isArray(v)) S.favorites=v; }catch(e){} }
+/* Favourites outlive a reload but AI-generated dishes do not (nothing else is
+   persisted), so a favourited generated dish leaves behind an id with no card.
+   Drop those on load, otherwise the count says 3 while the filter shows 2. */
+function loadFavorites(){
+  try{
+    const v=JSON.parse(localStorage.getItem(FAV_KEY));
+    if(!Array.isArray(v)) return;
+    S.favorites=v.filter(id=>DISH_BY_ID[id]);
+    if(S.favorites.length!==v.length) saveFavorites();
+  }catch(e){}
+}
 function saveFavorites(){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(S.favorites)); }catch(e){} }
 const isFav = id => S.favorites.indexOf(id)>=0;
 
@@ -1593,7 +1603,10 @@ function renderMenu(){
   const m=$('menu');
   $('wCount').textContent=S.week.length+(S.week.length===1?' dish':' dishes');
 
-  const nFav=S.favorites.length;
+  // Count only favourites that still have a card, so the badge and the filtered
+  // list can never disagree.
+  const favDishes=DISHES.filter(d=>isFav(d.id));
+  const nFav=favDishes.length;
   if(!nFav) S.favOnly=false;
   const ff=$('favFilter');
   ff.querySelector('.hi').innerHTML=ic(nFav?'heartFull':'heart',13);
@@ -1602,7 +1615,7 @@ function renderMenu(){
   ff.setAttribute('aria-pressed', String(S.favOnly));
   ff.disabled = nFav===0;
 
-  const shown = S.favOnly ? DISHES.filter(d=>isFav(d.id)) : DISHES;
+  const shown = S.favOnly ? favDishes : DISHES;
   if(!shown.length){ m.innerHTML='<div class="menu-empty">No favourites yet — tap the heart on a dish.</div>'; return; }
   let firstFlippableId=null;
   m.innerHTML=shown.map(d=>{
