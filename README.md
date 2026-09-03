@@ -219,7 +219,9 @@ Eight preset prompts live in the console sidebar. In order:
 
 - Shopify Global Catalog performs live cross-merchant product matching without an API key.
   Products can be filtered by delivery ZIP, but the catalog does not prove physical proximity.
-- CookTree prefers a single merchant and clearly separates carts when no store covers the full list.
+- CookTree prefers a single merchant and never opens more than two carts: it picks the one or two
+  merchants that together carry the most items, and lists anything only a third merchant carries
+  for your manual list instead.
 - Pack sizes and prices in `CATALOG[*].pack` are planning estimates. The retailer page is the
   source of truth for current product availability and prices.
 - Data (`§1`), engine (`§3`), tools (`§4`), registration (`§5`), agent (`§6`), render (`§9`).

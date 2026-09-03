@@ -1,0 +1,36 @@
+name: Deploy to Vercel
+
+# Vercel's Git integration deploys pushes made by members of the Vercel team
+# (ReddWu) on its own. Pushes from anyone else are refused with "Git author must
+# have access to the project on Vercel", so this workflow pokes a Deploy Hook
+# instead — Vercel then rebuilds main itself, regardless of who pushed.
+#
+# One-time setup (repo admin): Settings → Secrets and variables → Actions →
+# New repository secret → VERCEL_DEPLOY_HOOK = the hook URL from the Vercel
+# project's Settings → Git → Deploy Hooks (branch: main).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: true
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    # Skip ReddWu's own pushes: the native Git integration already deploys those,
+    # and firing the hook too would create a duplicate deployment.
+    if: github.event_name == 'workflow_dispatch' || github.actor != 'ReddWu'
+    env:
+      HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+    steps:
+      - name: Trigger Vercel production deployment
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "VERCEL_DEPLOY_HOOK secret is not set — nothing to do." >&2
+            exit 0
+          fi
+          curl -sSf -X POST "$HOOK" -o /dev/null -w 'Vercel responded %{http_code}\n'

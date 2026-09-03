@@ -12,6 +12,9 @@ const SHOPIFY_AGENT_PROFILE =
   'https://shopify.dev/ucp/agent-profiles/2026-04-08/valid-with-capabilities.json';
 const MAX_LINE_ITEMS = 20;
 const OFFERS_PER_ITEM = 20;
+// Hard cap on merchant carts per checkout. Items that only a third merchant
+// carries are reported back for the manual list instead of opening another cart.
+const MAX_MERCHANTS = 2;
 const REQUEST_TIMEOUT_MS = 12_000;
 
 function cleanString(value, maxLength) {
@@ -170,14 +173,28 @@ async function searchCatalog(lineItem, postalCode) {
   return [...cheapestBySeller.values()];
 }
 
-// Greedy maximum-coverage set cover: repeatedly pick whichever seller covers
-// the most still-unassigned line items (ties broken by lowest combined price
-// for those items), assign it everything it covers, and repeat on what's
-// left. This minimizes the number of resulting merchant carts instead of
-// picking one "primary" seller and then an independent top match per
-// leftover item (which can scatter across many different sellers).
+// Every combination of up to `size` sellers (singles, then pairs, …).
+function combinations(items, size) {
+  const out = [];
+  const walk = (start, combo) => {
+    if (combo.length) out.push(combo);
+    if (combo.length === size) return;
+    for (let i = start; i < items.length; i++) walk(i + 1, [...combo, items[i]]);
+  };
+  walk(0, []);
+  return out;
+}
+
+// Pick the set of at most MAX_MERCHANTS sellers that together carry the most
+// line items (ties: fewer sellers, then lower combined price), by checking every
+// single seller and every pair outright — with ≤20 items and a few hundred
+// sellers that is trivially cheap, and it beats greedy when the best pair does
+// not contain the best single seller. Items covered by both chosen sellers go
+// to the one with the wider coverage so carts consolidate. Items only some
+// other seller carries are returned as `capped` for the manual list rather than
+// opening a third cart; items nobody carries are `unmatched`.
 function chooseOffers(searches) {
-  const bySeller = new Map(); // sellerDomain -> Map(lineId -> offer)
+  const bySeller = new Map(); // sellerDomain -> Map(lineId -> cheapest offer)
   searches.forEach(({ lineItem, offers }) => {
     offers.forEach(offer => {
       let items = bySeller.get(offer.sellerDomain);
@@ -187,34 +204,39 @@ function chooseOffers(searches) {
     });
   });
 
-  const remaining = new Map(searches.map(({ lineItem }) => [lineItem.id, lineItem]));
-  const selected = [];
-  let primaryDomain = null;
-
-  while (remaining.size) {
-    let best = null;
-    for (const [domain, items] of bySeller) {
-      let coverage = 0, total = 0;
-      for (const lineId of remaining.keys()) {
-        const offer = items.get(lineId);
-        if (offer) { coverage += 1; total += offer.totalAmount; }
+  const lineIds = searches.map(({ lineItem }) => lineItem.id);
+  let best = null; // { domains, coverage, total }
+  for (const domains of combinations([...bySeller.keys()], MAX_MERCHANTS)) {
+    let coverage = 0, total = 0;
+    for (const lineId of lineIds) {
+      let cheapest = null;
+      for (const domain of domains) {
+        const offer = bySeller.get(domain).get(lineId);
+        if (offer && (!cheapest || offer.unitAmount < cheapest.unitAmount)) cheapest = offer;
       }
-      if (coverage === 0) continue;
-      if (!best || coverage > best.coverage || (coverage === best.coverage && total < best.total)) {
-        best = { domain, coverage, total };
-      }
+      if (cheapest) { coverage += 1; total += cheapest.totalAmount; }
     }
-    if (!best) break; // no seller covers any remaining item
-    if (primaryDomain === null) primaryDomain = best.domain;
-    const items = bySeller.get(best.domain);
-    for (const lineId of [...remaining.keys()]) {
-      const offer = items.get(lineId);
-      if (offer) { selected.push(offer); remaining.delete(lineId); }
+    if (!best || coverage > best.coverage ||
+        (coverage === best.coverage && (domains.length < best.domains.length ||
+          (domains.length === best.domains.length && total < best.total)))) {
+      best = { domains, coverage, total };
     }
   }
 
-  const unmatched = [...remaining.values()].map(lineItem => lineItem.name);
-  return { selected, unmatched, primaryDomain };
+  const selected = [];
+  const unmatched = [];
+  const capped = [];
+  // Wider-coverage seller first so shared items consolidate into it.
+  const ordered = best
+    ? [...best.domains].sort((a, b) => bySeller.get(b).size - bySeller.get(a).size)
+    : [];
+  searches.forEach(({ lineItem, offers }) => {
+    const domain = ordered.find(d => bySeller.get(d).has(lineItem.id));
+    if (domain) selected.push(bySeller.get(domain).get(lineItem.id));
+    else if (offers.length) capped.push(lineItem.name);
+    else unmatched.push(lineItem.name);
+  });
+  return { selected, unmatched, capped, primaryDomain: ordered[0] || null };
 }
 
 function cartUrlForGroup(group) {
@@ -294,7 +316,7 @@ module.exports = async (req, res) => {
     failed: result.status === 'rejected',
   }));
   const failedSearches = searches.filter(search => search.failed).length;
-  const { selected, unmatched, primaryDomain } = chooseOffers(searches);
+  const { selected, unmatched, capped, primaryDomain } = chooseOffers(searches);
   if (!selected.length) {
     res.status(502).json({
       error: 'Shopify could not find purchasable products for this list right now',
@@ -312,11 +334,13 @@ module.exports = async (req, res) => {
     requestedItemCount: lineItems.length,
     matchedItemCount: selected.length,
     unmatched,
+    capped,
     groups,
     liveTotalAmount,
     currency: 'USD',
     warnings: [
       ...(groups.length > 1 ? [`Products are split across ${groups.length} merchant carts.`] : []),
+      ...(capped.length ? [`${capped.length} item${capped.length === 1 ? '' : 's'} left for your manual list to stay within ${MAX_MERCHANTS} merchants.`] : []),
       ...(failedSearches ? [`${failedSearches} catalog search${failedSearches === 1 ? '' : 'es'} timed out or failed.`] : []),
       'Shipping, taxes, substitutions, and final availability are confirmed by each merchant.',
     ],

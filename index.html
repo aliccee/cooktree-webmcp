@@ -424,8 +424,13 @@ a.btn{text-decoration:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .modal{
   width:min(430px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border-2);
-  border-radius:0;box-shadow:0 28px 70px -24px rgba(0,0,0,.35);overflow:hidden;animation:rise .22s cubic-bezier(.2,.9,.3,1.05)
+  border-radius:0;box-shadow:0 28px 70px -24px rgba(0,0,0,.35);overflow:hidden;animation:rise .22s cubic-bezier(.2,.9,.3,1.05);
+  /* Never taller than the viewport: the body/receipt scrolls, header and footer
+     (with the Done/Cancel buttons) stay pinned and always reachable. */
+  max-height:calc(100vh - 32px);display:flex;flex-direction:column
 }
+.modal .mh,.modal .mf{flex:none}
+.modal .receipt{flex:1;min-height:0;overflow-y:auto}
 @keyframes rise{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 .modal .mh{padding:16px 18px 12px;border-bottom:1px solid var(--border)}
 .modal .badge{
@@ -1196,7 +1201,7 @@ const TOOLS = [
     const order={orderId,provider:body.provider||'Shopify Global Catalog',items:body.matchedItemCount,
       requestedItems:body.requestedItemCount,estimatedTotal:c.total,liveTotalAmount:body.liveTotalAmount,
       currency:body.currency||'USD',postalCode:body.postalCode,groups:body.groups||[],
-      unmatched:body.unmatched||[],warnings:body.warnings||[],status:'awaiting_user_checkout',
+      unmatched:body.unmatched||[],capped:body.capped||[],warnings:body.warnings||[],status:'awaiting_user_checkout',
       nextStep:'User reviews each merchant cart, shipping, taxes, and final availability, then pays on Shopify.'};
     S.orders.push(order);
     showShoppingHandoff(order);
@@ -1524,7 +1529,8 @@ function showShoppingHandoff(order){
         moneyMinor(group.subtotalAmount,group.currency)+'</small>'+
         '<a class="btn shopify-cta" href="'+escapeHTML(group.shoppingUrl)+'" target="_blank" rel="noopener noreferrer">Open Shopify cart</a></div></div>'
   ).join('');
-  const unmatched=order.unmatched.length?'<div class="mnote">No live match: '+order.unmatched.map(escapeHTML).join(', ')+'. Keep these on your manual list.</div>':'';
+  const unmatched=(order.unmatched.length?'<div class="mnote">No live match: '+order.unmatched.map(escapeHTML).join(', ')+'. Keep these on your manual list.</div>':'')+
+    ((order.capped||[]).length?'<div class="mnote">Left off to keep this to '+order.groups.length+' merchant cart'+(order.groups.length===1?'':'s')+': '+order.capped.map(escapeHTML).join(', ')+'. Add these to your manual list.</div>':'');
   scrim.innerHTML='<div class="modal"><div class="receipt">'+
     '<div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
     '<h3>Live Shopify products ready</h3>'+
@@ -1534,7 +1540,7 @@ function showShoppingHandoff(order){
     '<div class="store-list">'+groups+'</div>'+unmatched+
     '</div><div class="mf"><button class="btn wide" data-c="1">Done</button></div></div>';
   document.body.appendChild(scrim);
-  scrim.addEventListener('click',e=>{ if(e.target.closest('[data-c]')) scrim.remove(); });
+  scrim.addEventListener('click',e=>{ if(e.target===scrim || e.target.closest('[data-c]')) scrim.remove(); });
 }
 function showCheckoutError(message){
   const scrim=document.createElement('div'); scrim.className='scrim';
@@ -1543,7 +1549,7 @@ function showCheckoutError(message){
     '<div class="mb"><div class="mnote">No order was placed and nothing was charged. Your CookTree plan is unchanged.</div></div>'+
     '<div class="mf"><button class="btn wide" data-c="1">Back to plan</button></div></div>';
   document.body.appendChild(scrim);
-  scrim.addEventListener('click',e=>{ if(e.target.closest('[data-c]')) scrim.remove(); });
+  scrim.addEventListener('click',e=>{ if(e.target===scrim || e.target.closest('[data-c]')) scrim.remove(); });
 }
 
 /* ============ 9. RENDER ============ */
