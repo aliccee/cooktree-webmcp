@@ -1577,7 +1577,7 @@ function confirmSheet(cart){
         '</div>'+
         '<div class="mf">'+
           '<button class="btn" data-a="0">Cancel</button>'+
-          '<button class="btn primary" data-a="1">Create shopping list</button>'+
+          '<button class="btn primary" data-a="1">Find vendors</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(scrim);
@@ -1600,7 +1600,12 @@ function showShoppingHandoff(order){
         '<a class="btn shopify-cta" href="'+escapeHTML(group.shoppingUrl)+'" target="_blank" rel="noopener noreferrer">Open Shopify cart</a></div></div>'
   ).join('');
   const unmatched=(order.unmatched.length?'<div class="mnote">No live match: '+order.unmatched.map(escapeHTML).join(', ')+'. Keep these on your manual list.</div>':'')+
-    ((order.capped||[]).length?'<div class="mnote">Left off to keep this to '+order.groups.length+' merchant cart'+(order.groups.length===1?'':'s')+': '+order.capped.map(escapeHTML).join(', ')+'. Add these to your manual list.</div>':'');
+    ((order.capped||[]).length?(()=>{
+      // "3 vendor carts maximum — please add Spaghetti to your manual shopping list."
+      const names=order.capped.map(escapeHTML), n=order.groups.length;
+      const list=names.length>1?names.slice(0,-1).join(', ')+' and '+names[names.length-1]:names[0];
+      return '<div class="mnote">'+n+' vendor cart'+(n===1?'':'s')+' maximum — please add '+list+' to your manual shopping list.</div>';
+    })():'');
   scrim.innerHTML='<div class="modal"><div class="receipt">'+
     '<div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
     '<h3>Live Shopify products ready</h3>'+
