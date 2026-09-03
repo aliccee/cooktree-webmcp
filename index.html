@@ -74,7 +74,7 @@ header{
   background:var(--surface);
 }
 /* Wordmark: Newsreader, semi-bold, title case with no space — "CookTree". */
-.logo{display:flex;align-items:center;font-family:var(--serif);font-weight:600;font-size:18px;letter-spacing:-.01em}
+.logo{display:flex;align-items:center;font-family:var(--serif);font-weight:600;font-size:23px;letter-spacing:-.01em}
 .logo em{font-style:normal;color:var(--red)}
 .tagline{font-size:11px;font-weight:500;color:var(--faint);border-left:1px solid var(--border);padding-left:14px;margin-left:2px;letter-spacing:.02em}
 .spacer{flex:1}
@@ -105,7 +105,6 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
   font-size:12.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text);
   position:relative;
 }
-.panel-head::before{content:"";position:absolute;top:10px;left:18px;width:26px;height:2px;background:var(--red)}
 .panel-head{padding-top:24px}
 .favfilter{
   display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;
@@ -223,8 +222,11 @@ a.btn{text-decoration:none}
   animation:acctpulse 2.6s ease-out
 }
 @keyframes acctpulse{0%{transform:translateX(0)}8%{transform:translateX(-3px)}16%{transform:translateX(3px)}24%{transform:translateX(0)}}
-.acct .anote{font-size:10.5px;color:#6D685F;margin-top:8px;line-height:1.45}
-[data-theme="dark"] .acct .anote{color:var(--muted)}
+.acct .anote{font-size:10.5px;color:var(--faint);margin-top:8px;line-height:1.45}
+/* The registered tool name is called out in a warm mid-grey (design spec), not
+   full text colour; dark mode falls back to the text token for contrast. */
+.acct .anote .tool-ref{font-weight:700;color:#6D685F}
+[data-theme="dark"] .acct .anote .tool-ref{color:var(--text)}
 
 /* ============================================================
    MENU STRIP
@@ -304,7 +306,6 @@ a.btn{text-decoration:none}
 }
 .legend{margin-left:auto;display:flex;gap:16px;text-transform:uppercase;letter-spacing:.11em;font-weight:600;font-size:9.5px;color:var(--faint);font-family:var(--mono)}
 .legend i{display:inline-block;width:14px;height:2px;margin-right:7px;vertical-align:3px}
-.tree-bar::before{content:"";position:absolute;top:10px;left:22px;width:26px;height:2px;background:var(--red)}
 .tree-scroll{flex:1;overflow:auto;padding:4px 22px 28px}
 .tree{position:relative;display:grid;grid-template-columns:minmax(170px,258px) minmax(80px,270px) minmax(180px,262px);gap:0;align-items:start;max-width:840px}
 .tree .edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -1861,7 +1862,7 @@ function renderAccount(){
       '<span class="vl">'+a.value+'</span></div>').join('')+'</div>'+
     '<div class="anote">CookTree deliberately leaves these account surfaces with the retailer. '+
     'They are not registered as tools, so the agent cannot reach them.<br><br>'+
-    'Scope, not category: <b style="color:var(--text)">get_order_status</b> is registered — '+
+    'Scope, not category: <b class="tool-ref">get_order_status</b> is registered — '+
     'it covers checkout handoffs created in this tab. Retailer orders and payment remain a different scope.</div>';
 }
 function flashAccount(toolName){
