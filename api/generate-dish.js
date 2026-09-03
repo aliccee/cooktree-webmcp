@@ -20,9 +20,7 @@ Schema:
   "min": integer,             // realistic cook time in minutes, 5-240
   "serves": integer,          // default 2 unless the description implies otherwise
   "gear": string[],           // subset of ["wok","pot","steamer"] this dish needs; [] if none of those apply
-  "glyph": string,            // closest one of: pot, bowl, plate, noodle, fish — or the
-                               // literal string "none" if this dish genuinely doesn't
-                               // resemble any of them (e.g. a sandwich, salad, dessert, drink)
+  "glyph": string,            // closest one of: pot, bowl, plate, noodle, fish
   "ingredients": [
     {
       "name": string,         // ingredient name, plain English, <=30 chars
@@ -117,11 +115,7 @@ function validateDish(raw) {
     min: Math.round(num(raw.min, 5, 240, 30)),
     serves: Math.round(num(raw.serves, 1, 8, 2)),
     gear: (Array.isArray(raw.gear) ? raw.gear : []).filter((g) => ALLOWED_GEAR.has(g)).slice(0, 3),
-    // A deliberate "none" from the model means no built-in shape fits — kept as
-    // null so the caller knows to generate a proper illustration instead of a
-    // mismatched icon. Any other invalid/missing value still defaults to 'bowl',
-    // same as before, so prompt drift doesn't trigger unnecessary extra calls.
-    glyph: raw.glyph === 'none' ? null : (ALLOWED_GLYPH.has(raw.glyph) ? raw.glyph : 'bowl'),
+    glyph: ALLOWED_GLYPH.has(raw.glyph) ? raw.glyph : 'bowl',
     ingredients,
   };
 }
@@ -167,9 +161,9 @@ function generateDishImage(apiKey, description) {
     'no logos, no watermark, no border.');
 }
 
-// Only called when the dish doesn't fit any of the built-in pot/bowl/plate/noodle/fish
-// glyphs — a cute, flat illustration to stand in for those icons on the dish card,
-// stylistically rhyming with dishes/generator.html's hand-illustrated built-in dishes.
+// The dish card's front face: a cute, flat illustration in the same style as the
+// hand-illustrated built-in dishes (dishes/*.jpg). The realistic photo above is the
+// card's back face, revealed on hover.
 function generateDishIllustration(apiKey, description) {
   return callImageModel(apiKey,
     `Cute flat vector-style illustration of the finished dish: ${description}. ` +
@@ -192,8 +186,15 @@ module.exports = async (req, res) => {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'server missing OPENROUTER_API_KEY' }); return; }
 
+  // Both images are optional and run concurrently with the text call below: the
+  // realistic photo (card back) and the flat illustration (card front). The client
+  // falls back to a built-in dish's illustration or a procedural plate if this fails.
   const imagePromise = generateDishImage(apiKey, description).catch((error) => {
     console.error('[generate-dish] optional image generation failed', { message: error.message });
+    return null;
+  });
+  const illustrationPromise = generateDishIllustration(apiKey, description).catch((error) => {
+    console.error('[generate-dish] optional illustration generation failed', { message: error.message });
     return null;
   });
 
@@ -255,19 +256,9 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Only the minority of dishes that don't fit pot/bowl/plate/noodle/fish (glyph===null)
-  // need a second, illustration-style image call. Kick it off now, concurrently with the
-  // already-in-flight realistic-photo call, rather than serially after it.
-  const illustrationPromise = dish.glyph === null
-    ? generateDishIllustration(apiKey, description).catch((error) => {
-        console.error('[generate-dish] optional illustration generation failed', { message: error.message });
-        return null;
-      })
-    : null;
-
   const generatedImage = await imagePromise;
   if (generatedImage) dish.image = generatedImage.dataUrl;
-  const generatedIllustration = illustrationPromise ? await illustrationPromise : null;
+  const generatedIllustration = await illustrationPromise;
   if (generatedIllustration) dish.illustration = generatedIllustration.dataUrl;
 
   res.setHeader('Cache-Control', 'no-store');
@@ -276,10 +267,8 @@ module.exports = async (req, res) => {
     image: generatedImage
       ? { status: 'generated', model: generatedImage.model }
       : { status: 'unavailable', model: IMAGE_MODEL },
-    ...(illustrationPromise ? {
-      illustration: generatedIllustration
-        ? { status: 'generated', model: generatedIllustration.model }
-        : { status: 'unavailable', model: IMAGE_MODEL },
-    } : {}),
+    illustration: generatedIllustration
+      ? { status: 'generated', model: generatedIllustration.model }
+      : { status: 'unavailable', model: IMAGE_MODEL },
   });
 };

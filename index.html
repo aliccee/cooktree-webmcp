@@ -248,9 +248,7 @@ a.btn{text-decoration:none}
 .dish .shot:hover .flip-inner,.dish .shot.flipped .flip-inner{transform:rotateY(180deg)}
 .dish .shot .face{position:absolute;inset:0;overflow:hidden;backface-visibility:hidden;background:var(--surface-2)}
 .dish .shot .face img{width:100%;height:100%;object-fit:cover;display:block}
-.dish .shot .face.back{transform:rotateY(180deg);display:grid;place-items:center}
-.dish .shot .illo-icon{color:var(--muted);display:grid;place-items:center;
-  width:76px;height:76px;border-radius:50%;background:var(--surface)}
+.dish .shot .face.back{transform:rotateY(180deg)}
 .dish .shot .flip-badge{
   position:absolute;z-index:2;right:6px;bottom:6px;width:22px;height:22px;border-radius:50%;
   background:var(--surface);border:1px solid var(--border-2);display:grid;place-items:center;
@@ -1570,15 +1568,18 @@ function renderKitchen(){
   }).join('');
 }
 
-// AI-generated dishes with a realistic photo get a flip card: photo on the front,
-// illustration on the back. The back face prefers the matching pot/bowl/plate/noodle/fish
-// glyph, then an AI-generated cute illustration when none of those five fit, and — as a
-// last resort — the same procedural plate art (plateSvg) used elsewhere for dishes with
-// no photo at all, so a flip card's back is never empty.
-// Built-in dishes never flip: they have no realistic photo, only their curated JPG.
+// AI-generated dishes with a realistic photo get a flip card: the flat illustration is
+// the front (matching the built-in dishes' look), the photo is the back, revealed on
+// hover. The illustration comes from the built-in library when the generated dish is
+// one of those eight (exact English or Chinese name), otherwise from the AI-drawn
+// illustration returned alongside the photo, and — if that failed — the same
+// procedural plate art (plateSvg) used for dishes with no photo, so the front is never
+// empty. Built-in dishes never flip: they have no photo, only their curated JPG.
 function dishIllustration(d){
-  if(ICONS[d.glyph]) return {kind:'icon', glyph:d.glyph};
-  return {kind:'img', src:d.illustration||plateSvg(d)};
+  const n=d.n.toLowerCase();
+  const lib=DISHES.find(b=>!b.generated && (b.n.toLowerCase()===n || (d.cn && b.cn===d.cn)));
+  if(lib) return 'dishes/'+lib.id+'.jpg';
+  return d.illustration||plateSvg(d);
 }
 
 let flipDemoShown=false;
@@ -1605,17 +1606,17 @@ function renderMenu(){
     // fallback keeps AI-generated dishes renderable when they invent a cuisine
     const cu=CUISINE[d.cuisine]||{label:String(d.cuisine||'').toUpperCase()};
     const favBtn='<button class="fav'+(isFav(d.id)?' on':'')+'" data-fav="'+d.id+'" title="'+(isFav(d.id)?'Remove from favourites':'Add to favourites')+'" aria-label="'+(isFav(d.id)?'Remove from favourites':'Add to favourites')+'" aria-pressed="'+isFav(d.id)+'">'+ic(isFav(d.id)?'heartFull':'heart',17)+'</button>';
-    const illo=dishIllustration(d);
     const flippable=!!d.image;
     if(flippable && !firstFlippableId) firstFlippableId=d.id;
     const shot=flippable
       ? '<span class="shot" data-flippable="1"><span class="flip-inner">'+
-          '<span class="face front"><img src="'+escapeHTML(d.image)+'" alt="'+escapeHTML(d.n)+'" loading="lazy" onerror="this.remove()"></span>'+
-          '<span class="face back">'+(illo.kind==='icon'
-            ? '<span class="illo-icon">'+ic(illo.glyph,44)+'</span>'
-            : '<img src="'+escapeHTML(illo.src)+'" alt="" loading="lazy" onerror="this.remove()">')+'</span>'+
+          // Neither face is lazy: both are inline data URLs (or a tiny local JPG), and
+          // lazy-loading a face while it's the hidden backface can defer it, making
+          // the flip reveal a blank.
+          '<span class="face front"><img src="'+escapeHTML(dishIllustration(d))+'" alt="'+escapeHTML(d.n)+'" onerror="this.remove()"></span>'+
+          '<span class="face back"><img src="'+escapeHTML(d.image)+'" alt="'+escapeHTML(d.n)+' — photo" onerror="this.remove()"></span>'+
         '</span>'+favBtn+
-        '<span class="flip-badge" data-flip role="button" tabindex="0" aria-label="Flip between photo and illustration" aria-pressed="false">⟲</span>'+
+        '<span class="flip-badge" data-flip role="button" tabindex="0" aria-label="Flip between illustration and photo" aria-pressed="false">⟲</span>'+
       '</span>'
       // No photo (generation failed, or a built-in dish, which never has one). Fall back
       // to the drawn plate — built-ins use their curated JPG, generated dishes use
