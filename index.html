@@ -97,7 +97,7 @@ main{flex:1;display:grid;grid-template-columns:264px minmax(0,1fr) 316px;min-hei
 .panel-head::before{content:"";position:absolute;top:10px;left:18px;width:26px;height:2px;background:var(--red)}
 .panel-head{padding-top:24px}
 .favfilter{
-  margin-left:12px;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;
+  display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;
   border:1px solid var(--border);color:var(--faint);font-family:var(--mono);font-size:10px;
   letter-spacing:.1em;text-transform:uppercase
 }
@@ -218,7 +218,9 @@ a.btn{text-decoration:none}
    MENU STRIP
    ============================================================ */
 .menu-wrap{flex:none;border-bottom:1px solid var(--border);background:var(--bg)}
-.menu{display:flex;align-items:stretch;gap:10px;overflow-x:auto;padding:14px 22px 18px;scrollbar-width:thin}
+/* Slim toolbar between the generate bar and the dish strip (favourites filter). */
+.menu-tools{display:flex;align-items:center;gap:8px;padding:0 22px}
+.menu{display:flex;align-items:stretch;gap:10px;overflow-x:auto;padding:12px 22px 18px;scrollbar-width:thin}
 .dish{
   flex:none;width:186px;text-align:left;padding:0 0 13px;border:1px solid var(--border);
   border-radius:0;background:var(--surface);transition:.14s;position:relative;overflow:hidden;
@@ -535,11 +537,13 @@ a.btn{text-decoration:none}
   <section class="col">
     <div class="menu-wrap">
       <div class="panel-head" style="padding-bottom:0">This Week <span class="dates" id="wDates"></span>
-        <button class="favfilter" id="favFilter" aria-pressed="false"><span class="hi"></span><span class="ct"></span></button>
         <span class="count" id="wCount">0 dishes</span></div>
       <div class="addrow" style="padding:0 22px 12px">
         <input id="genDesc" placeholder="Describe a dish — AI adds it (e.g. braised pork belly)…">
         <button class="btn" id="genBtn">Generate</button>
+      </div>
+      <div class="menu-tools">
+        <button class="favfilter" id="favFilter" aria-pressed="false"><span class="hi"></span><span class="ct"></span></button>
       </div>
       <div class="menu" id="menu"></div>
     </div>
