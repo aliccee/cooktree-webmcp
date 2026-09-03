@@ -29,16 +29,27 @@
   --sans:"Mulish",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#131210; --surface:#1B1A17; --surface-2:#22211E; --border:#312E29;
-  --border-2:#413E39;
-  --text:#F2EFE9; --muted:#9C978F; --faint:#6F6B65;
-  --brand:#F2EFE9; --brand-soft:#232220;
+  --bg:#131210; --surface:#31302A; --surface-2:#3A3934; --border:#45433D;
+  --border-2:#5A5750;
+  --text:#EFEAE1; --muted:#A8A399; --faint:#7E7A72;
+  --brand:#EFEAE1; --brand-soft:#232220;
   --red:#E8475F;
-  --have:#7C7871; --have-soft:#232220;
+  --have:#8C887F; --have-soft:#2A2925;
   --short:#E8475F; --short-soft:#2C1418;
   --warn:#C9A85E;
   --console-bg:#0E0E0C; --console-line:#262522;
 }
+/* Dark-mode layout accents (design spec): dark-grey side columns (#31302A, via
+   --surface above), a lighter grey centre column, khaki dish cards, and cream
+   (#EFEAE1) wherever light mode uses white. The centre column re-tunes the text
+   and border tokens so labels stay legible on the lighter ground. */
+[data-theme="dark"] main>.col:not(.left):not(.right),[data-theme="dark"] .menu-wrap{
+  background:#494949;--faint:#BDB8AE;--muted:#D8D3C9;--border:#5F5C55;--border-2:#7A766E
+}
+[data-theme="dark"] .dish,[data-theme="dark"] .dish[data-on="1"]{background:#716754}
+[data-theme="dark"] .favfilter[aria-pressed="true"],[data-theme="dark"] .dish .fav:not(.on),
+[data-theme="dark"] .btn.primary:hover,[data-theme="dark"] .kitcheck .kadd:hover,
+[data-theme="dark"] .shopify-cta,[data-theme="dark"] .shopify-cta:hover{color:#EFEAE1}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -959,6 +970,21 @@ function resolveGear(name){
   return id;
 }
 
+/* A catalog row for something the user owns that no dish or alias knows about
+   (味精, MSG, a jar of capers). Chinese input becomes both the display name and
+   the cn field so resolveItem() finds it again by exact match; the pack is a
+   neutral placeholder — this item only ever appears in the kitchen, never on a
+   shopping list, unless a generated dish later reuses it by name. */
+let customItemSeq=0;
+function addCatalogItem(name){
+  const isCJK=/[㐀-鿿]/.test(name);
+  let id='custom'+(++customItemSeq);
+  while(CATALOG[id]) id='custom'+(++customItemSeq);
+  CATALOG[id]={n:name, cn:isCJK?name:'', cat:'ingredient', u:'g',
+    pack:{size:100, label:'1 pack', price:2}, icon:'leaf'};
+  return id;
+}
+
 function mergeGeneratedDish(dish){
   const need={}; const newIngredients=[]; const normalised=[];
   dish.ingredients.forEach(it=>{
@@ -1008,17 +1034,23 @@ const TOOLS = [
   inputSchema:{type:'object',properties:{items:{type:'array',items:{type:'object',properties:{
     item:{type:'string'},qty:{type:'number'}}}}},required:['items']},
   run(a){
-    const added=[];
+    const added=[], created=[];
     (a.items||[]).forEach(it=>{
-      const id = resolveItem(typeof it==='string'?it:it.item);
-      if(!id) return;
+      const name=String(typeof it==='string'?it:(it&&it.item)||'').trim();
+      if(!name) return;
+      let id = resolveItem(name);
+      // Not in the catalog (e.g. 味精 / MSG): add it rather than silently dropping
+      // it, so "I have X" always lands in the kitchen. Later mentions resolve to
+      // this entry by exact name.
+      if(!id){ id=addCatalogItem(name); created.push(CATALOG[id].n); }
       const q = (it&&it.qty) || CATALOG[id].pack.size;
       S.kitchen[id]=(S.kitchen[id]||0)+q;
       added.push(CATALOG[id].n);
     });
-    return {added, kitchenSize:Object.keys(S.kitchen).length};
+    return {added, created, kitchenSize:Object.keys(S.kitchen).length};
   },
-  summary:r=>'added '+(r.added.join(', ')||'nothing')
+  summary:r=>'added '+(r.added.join(', ')||'nothing')+
+    (r.created&&r.created.length?' · '+r.created.length+' new to catalog':'')
 },
 {
   name:'remove_from_kitchen',
