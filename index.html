@@ -970,18 +970,43 @@ function resolveGear(name){
   return id;
 }
 
+/* Best-effort category for something the user typed that the catalog doesn't
+   know. Order matters: things that are clearly food (肉/菜/鱼…, meat/tofu/…)
+   win first so 油菜 isn't read as "oil", then cookware, then seasonings by
+   their typical suffixes/words (…精, …粉, …酱, sauce, powder, spice). Liquid
+   seasonings get ml + a bottle. Anything unrecognised is an ingredient. */
+const ITEM_RULES={
+  food:      /[菜肉鱼虾蟹蛋菇瓜果薯茄豆腐米面奶]|\b(meat|beef|pork|chicken|lamb|fish|shrimp|prawn|crab|egg|tofu|mushroom|rice|noodle|pasta|milk|cheese|cream|yogurt|bell pepper|chili pepper|chilli pepper)\b/i,
+  cookware:  /[锅铲刀勺碗盘盆板箕笼]|烤箱|砧板|案板|\b(pan|pot|wok|steamer|skillet|oven|fryer|knife|board|blender|cooker|grater|whisk|ladle|spatula|colander)\b/i,
+  seasoning: /[盐糖醋酱油精粉料汁]$|生抽|老抽|料酒|黄酒|米酒|胡椒|花椒|八角|桂皮|香叶|孜然|味精|鸡精|蚝油|豆瓣|芝麻|淀粉|生粉|咖喱|味噌|芥末|蜂蜜|高汤|香料|调料|十三香|五香|\b(salt|sugar|sauce|oil|vinegar|powder|paste|spice|spices|peppercorn|black pepper|white pepper|ground pepper|msg|seasoning|stock|bouillon|broth|extract|wine|mirin|sake|starch|ketchup|mustard|mayo|mayonnaise|honey|syrup|curry|miso|wasabi|herbs?|flakes|cumin|cinnamon|anise|cloves?|nutmeg|paprika)\b/i,
+  liquid:    /[油醋汁]$|酱油|生抽|老抽|料酒|黄酒|米酒|蚝油|高汤|\b(sauce|oil|vinegar|wine|mirin|sake|syrup|honey|stock|broth|extract)\b/i
+};
+function classifyItem(name){
+  if(ITEM_RULES.food.test(name))     return {cat:'ingredient', u:'g',  icon:'leaf',   pack:{size:200,label:'1 pack',  price:2}};
+  if(ITEM_RULES.cookware.test(name)) return {cat:'cookware',   u:'pc', icon:'pot',    pack:{size:1,  label:'1',       price:24}};
+  if(ITEM_RULES.seasoning.test(name)){
+    return ITEM_RULES.liquid.test(name)
+      ? {cat:'seasoning', u:'ml', icon:'bottle', pack:{size:500,label:'1 bottle',price:3.5}}
+      : {cat:'seasoning', u:'g',  icon:'spice',  pack:{size:100,label:'1 pack',  price:2.5}};
+  }
+  return {cat:'ingredient', u:'g', icon:'leaf', pack:{size:200,label:'1 pack',price:2}};
+}
+
 /* A catalog row for something the user owns that no dish or alias knows about
    (味精, MSG, a jar of capers). Chinese input becomes both the display name and
    the cn field so resolveItem() finds it again by exact match; the pack is a
    neutral placeholder — this item only ever appears in the kitchen, never on a
-   shopping list, unless a generated dish later reuses it by name. */
+   shopping list, unless a generated dish later reuses it by name. An explicit
+   category (from the agent) beats the heuristic. */
 let customItemSeq=0;
-function addCatalogItem(name){
+function addCatalogItem(name, category){
   const isCJK=/[㐀-鿿]/.test(name);
+  const guess=classifyItem(name);
+  if(category==='seasoning'||category==='ingredient'||category==='cookware') guess.cat=category;
+  if(guess.cat==='cookware'){ guess.u='pc'; guess.pack={size:1,label:'1',price:24}; guess.icon='pot'; }
   let id='custom'+(++customItemSeq);
   while(CATALOG[id]) id='custom'+(++customItemSeq);
-  CATALOG[id]={n:name, cn:isCJK?name:'', cat:'ingredient', u:'g',
-    pack:{size:100, label:'1 pack', price:2}, icon:'leaf'};
+  CATALOG[id]={n:name, cn:isCJK?name:'', cat:guess.cat, u:guess.u, pack:guess.pack, icon:guess.icon};
   return id;
 }
 
@@ -1030,9 +1055,9 @@ const TOOLS = [
 },
 {
   name:'add_to_kitchen',
-  description:'Record items the user already owns. Quantities are optional; a sensible default pack is assumed.',
+  description:'Record items the user already owns. Quantities are optional; a sensible default pack is assumed. Unknown items are added to the catalog; pass category to override the guessed ingredient/seasoning/cookware.',
   inputSchema:{type:'object',properties:{items:{type:'array',items:{type:'object',properties:{
-    item:{type:'string'},qty:{type:'number'}}}}},required:['items']},
+    item:{type:'string'},qty:{type:'number'},category:{type:'string',enum:['ingredient','seasoning','cookware']}}}}},required:['items']},
   run(a){
     const added=[], created=[];
     (a.items||[]).forEach(it=>{
@@ -1042,7 +1067,7 @@ const TOOLS = [
       // Not in the catalog (e.g. 味精 / MSG): add it rather than silently dropping
       // it, so "I have X" always lands in the kitchen. Later mentions resolve to
       // this entry by exact name.
-      if(!id){ id=addCatalogItem(name); created.push(CATALOG[id].n); }
+      if(!id){ id=addCatalogItem(name, it&&it.category); created.push(CATALOG[id].n); }
       const q = (it&&it.qty) || CATALOG[id].pack.size;
       S.kitchen[id]=(S.kitchen[id]||0)+q;
       added.push(CATALOG[id].n);
