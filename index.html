@@ -218,7 +218,9 @@ a.btn{text-decoration:none}
    MENU STRIP
    ============================================================ */
 .menu-wrap{flex:none;border-bottom:1px solid var(--border);background:var(--bg)}
-/* Slim toolbar between the generate bar and the dish strip (favourites filter). */
+/* Vertical rhythm of the strip: 12px between generate bar → favourites → cards,
+   and twice that (24px) between the "This week" heading and the generate bar. */
+.menu-wrap .addrow{margin-top:24px;padding:0 22px 12px}
 .menu-tools{display:flex;align-items:center;gap:8px;padding:0 22px}
 .menu{display:flex;align-items:stretch;gap:10px;overflow-x:auto;padding:12px 22px 18px;scrollbar-width:thin}
 .dish{
@@ -538,7 +540,7 @@ a.btn{text-decoration:none}
     <div class="menu-wrap">
       <div class="panel-head" style="padding-bottom:0">This Week <span class="dates" id="wDates"></span>
         <span class="count" id="wCount">0 dishes</span></div>
-      <div class="addrow" style="padding:0 22px 12px">
+      <div class="addrow">
         <input id="genDesc" placeholder="Describe a dish — AI adds it (e.g. braised pork belly)…">
         <button class="btn" id="genBtn">Generate</button>
       </div>
@@ -1683,7 +1685,7 @@ function renderTree(){
         '<path d="M158 22c5 0 8 5 8 11s-3 10-8 10"/><path d="M158 43v31"/>'+
         '<path d="M96 44c4-6 10-8 16-6" opacity=".55"/>'+
       '</svg>'+
-      '<b>还没点菜</b>Pick dishes above, or ask the agent below.<br>The tree shows every ingredient, who needs it, and what you are short.</div>';
+      '<b>还没点菜</b>Select recipes above, generate one in the search bar, or ask the agent below.<br>CookTree checks what you have, finds what’s missing, and creates a shopping list.</div>';
     prevItemIds=[]; return;
   }
   const shortItems=t.items.filter(i=>i.short>0);
