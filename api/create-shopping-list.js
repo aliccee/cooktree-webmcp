@@ -12,9 +12,13 @@ const SHOPIFY_AGENT_PROFILE =
   'https://shopify.dev/ucp/agent-profiles/2026-04-08/valid-with-capabilities.json';
 const MAX_LINE_ITEMS = 20;
 const OFFERS_PER_ITEM = 20;
-// Hard cap on merchant carts per checkout. Items that only a third merchant
+// Hard cap on merchant carts per checkout. Items that only a further merchant
 // carries are reported back for the manual list instead of opening another cart.
-const MAX_MERCHANTS = 2;
+const MAX_MERCHANTS = 3;
+// Combinations are checked exhaustively, which for triples of several hundred
+// sellers would be millions of checks. The best set is always drawn from the
+// sellers with the widest coverage, so only the top candidates are combined.
+const MAX_CANDIDATE_SELLERS = 40;
 const REQUEST_TIMEOUT_MS = 12_000;
 
 function cleanString(value, maxLength) {
@@ -187,12 +191,12 @@ function combinations(items, size) {
 
 // Pick the set of at most MAX_MERCHANTS sellers that together carry the most
 // line items (ties: fewer sellers, then lower combined price), by checking every
-// single seller and every pair outright — with ≤20 items and a few hundred
-// sellers that is trivially cheap, and it beats greedy when the best pair does
-// not contain the best single seller. Items covered by both chosen sellers go
-// to the one with the wider coverage so carts consolidate. Items only some
-// other seller carries are returned as `capped` for the manual list rather than
-// opening a third cart; items nobody carries are `unmatched`.
+// combination of the top MAX_CANDIDATE_SELLERS sellers outright — cheap, and it
+// beats greedy when the best set does not contain the best single seller. Items
+// covered by several chosen sellers go to the one with the wider coverage so
+// carts consolidate. Items only some other seller carries are returned as
+// `capped` for the manual list rather than opening another cart; items nobody
+// carries are `unmatched`.
 function chooseOffers(searches) {
   const bySeller = new Map(); // sellerDomain -> Map(lineId -> cheapest offer)
   searches.forEach(({ lineItem, offers }) => {
@@ -205,8 +209,12 @@ function chooseOffers(searches) {
   });
 
   const lineIds = searches.map(({ lineItem }) => lineItem.id);
+  const candidates = [...bySeller.entries()]
+    .sort((a, b) => b[1].size - a[1].size)
+    .slice(0, MAX_CANDIDATE_SELLERS)
+    .map(([domain]) => domain);
   let best = null; // { domains, coverage, total }
-  for (const domains of combinations([...bySeller.keys()], MAX_MERCHANTS)) {
+  for (const domains of combinations(candidates, MAX_MERCHANTS)) {
     let coverage = 0, total = 0;
     for (const lineId of lineIds) {
       let cheapest = null;
