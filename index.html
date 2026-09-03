@@ -249,7 +249,7 @@ a.btn{text-decoration:none}
   display:block;position:relative;width:100%;height:100%;transform-style:preserve-3d;
   transition:transform .6s cubic-bezier(.2,.7,.3,1)
 }
-.dish .shot:hover .flip-inner,.dish .shot.flipped .flip-inner{transform:rotateY(180deg)}
+.dish .shot[data-flippable="1"]:hover .flip-inner,.dish .shot[data-flippable="1"].flipped .flip-inner{transform:rotateY(180deg)}
 .dish .shot .face{position:absolute;inset:0;overflow:hidden;backface-visibility:hidden;background:var(--surface-2)}
 .dish .shot .face img{width:100%;height:100%;object-fit:cover;display:block}
 .dish .shot .face.back{transform:rotateY(180deg)}
@@ -504,7 +504,7 @@ a.btn{text-decoration:none}
     </svg>
     Cook<em>Tree</em>
   </div>
-  <div class="tagline">ONE TOOL LAYER &nbsp;·&nbsp; THE UI AND THE AGENT BOTH CALL IT</div>
+  <div class="tagline">ONE TOOL LAYER &nbsp;·&nbsp; BUILT FOR HUMANS AND AGENTS</div>
   <div class="spacer"></div>
   <div class="pill" id="mcpPill"><span class="dot"></span><span id="mcpText">checking WebMCP…</span></div>
   <div class="seg" id="modeSeg">
@@ -1631,15 +1631,20 @@ function renderMenu(){
     // fallback keeps AI-generated dishes renderable when they invent a cuisine
     const cu=CUISINE[d.cuisine]||{label:String(d.cuisine||'').toUpperCase()};
     const favBtn='<button class="fav'+(isFav(d.id)?' on':'')+'" data-fav="'+d.id+'" title="'+(isFav(d.id)?'Remove from favourites':'Add to favourites')+'" aria-label="'+(isFav(d.id)?'Remove from favourites':'Add to favourites')+'" aria-pressed="'+isFav(d.id)+'">'+ic(isFav(d.id)?'heartFull':'heart',17)+'</button>';
-    const flippable=!!d.image;
+    // Built-in dishes ship with a photo in dishes/photos/; generated ones carry theirs
+    // as a data URL. Either way the card flips illustration → photo on hover.
+    const photo=d.generated ? d.image : 'dishes/photos/'+d.id+'.jpg';
+    const flippable=!!photo;
     if(flippable && !firstFlippableId) firstFlippableId=d.id;
     const shot=flippable
       ? '<span class="shot" data-flippable="1"><span class="flip-inner">'+
-          // Neither face is lazy: both are inline data URLs (or a tiny local JPG), and
+          // Neither face is lazy: both are inline data URLs (or a small local JPG), and
           // lazy-loading a face while it's the hidden backface can defer it, making
-          // the flip reveal a blank.
+          // the flip reveal a blank. If a built-in's photo file is missing, the card
+          // quietly stops being flippable instead of flipping to an empty back.
           '<span class="face front"><img src="'+escapeHTML(dishIllustration(d))+'" alt="'+escapeHTML(d.n)+'" onerror="this.remove()"></span>'+
-          '<span class="face back"><img src="'+escapeHTML(d.image)+'" alt="'+escapeHTML(d.n)+' — photo" onerror="this.remove()"></span>'+
+          '<span class="face back"><img src="'+escapeHTML(photo)+'" alt="'+escapeHTML(d.n)+' — photo" '+
+            'onerror="var s=this.closest(\'.shot\');s.removeAttribute(\'data-flippable\');var b=s.querySelector(\'.flip-badge\');if(b)b.remove();this.remove()"></span>'+
         '</span>'+favBtn+
         '<span class="flip-badge" data-flip role="button" tabindex="0" aria-label="Flip between illustration and photo" aria-pressed="false">⟲</span>'+
       '</span>'
@@ -1652,7 +1657,7 @@ function renderMenu(){
     return '<span class="dish" data-dish="'+d.id+'" data-on="'+(on?1:0)+'" role="button" tabindex="0">'+
       shot+
       '<span class="pad">'+
-        '<span class="cui">'+cu.label+(d.generated?' · AI':'')+'</span>'+
+        '<span class="cui">'+cu.label+'</span>'+
         '<span class="top"><span><span class="nm">'+d.n+'</span><span class="cn">'+(d.cn||'')+'</span></span></span>'+
       '</span>'+
       '<span class="meta">'+d.min+' MIN'+(miss?' · <span class="miss">'+miss+' SHORT</span>':' · <span class="ok">COMPLETE</span>')+'</span>'+

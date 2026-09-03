@@ -1,8 +1,10 @@
-# Dish photos
+# Dish art
 
-Eight illustrations live here already — flat top-down plates drawn to match the
-page's palette. Replace any of them with a photograph at the same filename and
-the card picks it up; a missing file falls back to the line drawing.
+Eight illustrations live here — flat top-down plates drawn to match the page's
+palette. They are the front of each dish card. The matching realistic photo, shown
+when the card is hovered or flipped, lives in `photos/<id>.jpg`; a missing photo
+simply makes that card non-flippable, and a missing illustration falls back to the
+line drawing. Nothing breaks.
 
 Filenames:
 
@@ -28,6 +30,24 @@ commercial use with no attribution required.
 
 ## Regenerating
 
-`generator.html` draws all eight from a seeded config — open it and screenshot
-each `.plate`, or edit a dish's colours and shape counts in the `DISHES` object
-at the top. Same seed, same picture, every time.
+`generator.html` draws all eight illustrations from a seeded config — open it and
+screenshot each `.plate`, or edit a dish's colours and shape counts in the `DISHES`
+object at the top. Same seed, same picture, every time.
+
+## Photos
+
+`photos/<id>.jpg` are generated with the same image model and prompt the live
+`generate_dish` tool uses, so built-in and AI-generated cards flip to the same kind
+of photo:
+
+```bash
+node dishes/generate-photos.mjs   # all eight · or pass ids: mapo curry
+```
+
+By default the script asks the deployed `/api/generate-dish` for each photo, so no
+key is needed locally (`vercel env pull` returns the Sensitive key as an empty
+string anyway). With `OPENROUTER_API_KEY` set in the environment it calls
+OpenRouter directly instead, which is cheaper.
+
+Output is JPEG, 800px wide (~100–200 KB each). Add a dish to `DISHES[]` in
+`index.html` *and* to the list at the top of the script, then run it for that id.
