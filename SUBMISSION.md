@@ -4,7 +4,7 @@
 **Repo:** https://github.com/aliccee/cooktree-webmcp (MIT)
 
 Open in Chrome with WebMCP enabled (`chrome://flags`, or the origin trial) — the
-header pill turns green and reads `WebMCP connected · 12 tools`. Without it the
+header pill turns green and reads `WebMCP connected · 13 tools`. Without it the
 pill reads `local agent` and a small built-in intent router drives the identical
 tool layer, so nothing in the demo depends on a client being attached.
 
@@ -46,7 +46,11 @@ before accepting them: a model asking for 3 g of onion when an onion is a 200 g
 pack is a unit slip, and the console says so. The model is a source, not an
 authority.
 
-The site's own buttons call the same twelve functions the agent calls. Clicking
+Generated dishes pile up, so a heart on each card and a filter in the header
+keep the row usable; `set_favorite` is a tool too, so "favourite the mapo tofu"
+and "plan from my favourites" both work.
+
+The site's own buttons call the same thirteen functions the agent calls. Clicking
 an ingredient fires `explain_shortage`; clicking a dish fires `plan_week`. There
 is no separate agent path that can drift out of sync with the UI.
 
@@ -56,7 +60,7 @@ what it gets back is a set of merchant carts, never a payment.
 
 ## What people and agents can do together that was difficult or impossible before
 
-**A site can hand over part of itself.** CookTree registers twelve functions.
+**A site can hand over part of itself.** CookTree registers thirteen functions.
 `update_delivery_address`, `update_payment_method`, `read_order_history` and
 `update_spend_limit` are deliberately not among them. Ask the agent to change
 the delivery address and it fails through the real unknown-tool path — no fake
@@ -64,7 +68,7 @@ refusal branch:
 
 ```
 → update_delivery_address { "address": "42 Mission St" }
-✕ no such tool — 12 registered, this is not one of them
+✕ no such tool — 13 registered, this is not one of them
    the site never exposed it · a click-agent would open Settings and change it
 ```
 
@@ -98,7 +102,7 @@ surface it is willing to support.
 
 ## How we implemented WebMCP
 
-Twelve tools are defined once in `§4 TOOLS[]` of `index.html` and registered
+Thirteen tools are defined once in `§4 TOOLS[]` of `index.html` and registered
 individually:
 
 ```js
@@ -124,4 +128,4 @@ sit behind it so their keys stay server-side and never reach the browser or the
 repository: `api/generate-dish.js` (free text → a real plannable dish and a generated
 photograph of it, via OpenRouter) and `api/create-shopping-list.js` (shortages →
 live Shopify listings and real carts). On static hosting with no `/api` route,
-those two tools return a clear error and the other ten keep working.
+those two tools return a clear error and the other eleven keep working.

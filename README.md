@@ -4,7 +4,7 @@
 
 CookTree is a demo of [WebMCP](https://github.com/webmachinelearning/webmcp) — the W3C
 draft that lets a website hand an AI agent typed tools instead of making it squint at
-pixels. Every dish you click and every sentence you type goes through the *same* twelve
+pixels. Every dish you click and every sentence you type goes through the *same* thirteen
 tool definitions.
 
 The core app is a single HTML file with no dependencies or build step. Most tools run entirely
@@ -66,7 +66,7 @@ Ask the agent to change the delivery address on the account:
 
 ```
 → update_delivery_address { "address": "42 Mission St" }
-✕ no such tool — 12 registered, this is not one of them
+✕ no such tool — 13 registered, this is not one of them
    the site never exposed it · a click-agent would open Settings and change it
 ```
 
@@ -74,7 +74,7 @@ Ask the agent to change the delivery address on the account:
 
 The account panel shows the surfaces CookTree deliberately leaves with the retailer:
 payment, delivery address, and retailer order history. **None of them is registered as a
-tool.** CookTree's agent gets twelve purpose-built functions and nothing else.
+tool.** CookTree's agent gets thirteen purpose-built functions and nothing else.
 
 This is the only beat that proves a *structural* difference. The other two only prove
 convenience.
@@ -115,9 +115,9 @@ model behaves.
 
 ## The tool layer
 
-Twelve tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
+Thirteen tools, defined once in `§4 TOOLS[]`. The site's UI calls `invoke()`; so does the agent.
 
-Eleven stay inside CookTree's planning boundary (including one outside AI call). Exactly one
+Twelve stay inside CookTree's planning boundary (including one outside AI call). Exactly one
 can create a real-retailer handoff, and it always stops for a human first. Final payment remains
 on the retailer page.
 
@@ -132,6 +132,7 @@ on the retailer page.
 | `set_portions` | Rescale one dish and every downstream quantity | a draft gets messy |
 | `add_gear_to_cart` | Add missing cookware to the computed list | a draft gets messy |
 | `explain_shortage` | Why is this on my list, who needs it, substitutes | nothing happens |
+| `set_favorite` | Keep a dish at the front of a long list | reversible |
 | `get_order_status` | Status of the retailer handoff **this agent created** | nothing happens |
 | `generate_dish` | Free text → a real dish via DeepSeek plus a matching dish image via Nano Banana 2 Lite, merged into the same engine as the built-in 8 | a few extra catalog rows |
 | `checkout` | **Human-gated.** Creates a real-product shopping list; payment stays at the retailer | an external list is created |

@@ -589,7 +589,7 @@ a.btn{text-decoration:none}
 <section class="console" id="console">
   <div class="chead">
     <span class="t">Agent Console</span><span class="tools" style="color:var(--console-dim)">·&nbsp; not part of the product</span>
-    <span class="tools" id="toolCount">8 tools registered</span>
+    <span class="tools" id="toolCount">13 tools registered</span>
     <div class="spacer" style="flex:1"></div>
     <button id="clearLog">clear</button>
     <button id="toggleConsole">user view</button>
@@ -1396,7 +1396,7 @@ function registerWebMCP(){
     /* Canonical WebMCP registration — one registerTool() call per tool:
      *   document.modelContext.registerTool({ name, description, inputSchema, execute })
      * provideContext() is the batch form and is used only where registerTool
-     * is absent. All 12 tools are defined once in §4 TOOLS[]. */
+     * is absent. All 13 tools are defined once in §4 TOOLS[]. */
     if(typeof mc.registerTool==='function'){
       defs.forEach(d=>mc.registerTool({
         name:        d.name,
