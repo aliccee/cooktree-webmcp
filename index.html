@@ -1211,7 +1211,7 @@ const TOOLS = [
   name:'generate_dish',
   description:'Turn a free-text dish description into a real, plannable dish — ingredients, quantities and cook time inferred by an AI model, then added to the same dependency-tree engine every other dish uses. Not in the site’s fixed catalog until this is called.',
   inputSchema:{type:'object',properties:{description:{type:'string'}},required:['description']},
-  async run(a){
+  async run(a, ctx){
     const description=(a.description||'').trim();
     if(!description) return {error:'description is required'};
     let res;
